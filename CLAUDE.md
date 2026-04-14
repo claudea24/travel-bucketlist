@@ -82,8 +82,8 @@ All contexts use optimistic updates with Supabase persistence and rollback on er
 | Route | Purpose |
 |---|---|
 | `/api/weather` | Proxies Open-Meteo API for weather data (cached 1hr) |
-| `/api/activities` | Fetches things-to-do from Wikivoyage + Wikipedia images (cached 24hr) |
-| `/api/plan-trip` | AI trip planner — calls OpenAI to generate day-by-day itinerary |
+| `/api/activities` | AI-generated activities (OpenAI) with Wikipedia images, Wikivoyage fallback |
+| `/api/plan-trip` | AI trip planner — generates + refines itinerary via conversational edits |
 
 ## External APIs
 
@@ -111,8 +111,18 @@ Each country page (`/country/[code]`) includes:
   - Select trip duration (3-14 days)
   - Builds itinerary from your saved activities + interests
   - Day-by-day schedule with times, costs, categories
-  - Hotel/Airbnb area recommendations with booking links
+  - Hotel/Airbnb area recommendations with direct booking links
   - Budget breakdown + practical travel tips
+  - **Editable**: remove days/activities inline, add accommodation notes, save chosen Airbnb/hotel
+  - **Refine with AI**: chat-style input to modify ("make it shorter", "add more food", "remove shopping")
+  - Quick suggestion chips for common refinements
+  - Save finalized itinerary locally
+
+### Activity Data Pipeline
+1. **Primary**: OpenAI generates 12-15 specific activities per country (real place names, descriptions, categories)
+2. **Fallback**: Wikivoyage API parsing if OpenAI unavailable
+3. **Images**: Wikipedia API thumbnails fetched in parallel for each activity
+4. **Links**: Auto-generated YouTube search + Google Images + Google search per activity
 
 ## Environment Variables (`.env.local`)
 ```

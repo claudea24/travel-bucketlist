@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { countryName, activities, days, interests } = body;
+  const { countryName, activities, days, interests, currentItinerary, refineRequest } = body;
 
   if (!countryName) {
     return NextResponse.json({ error: "countryName is required" }, { status: 400 });
@@ -17,15 +17,21 @@ export async function POST(request: NextRequest) {
   const tripDays = days || 5;
   const userInterests = interests || "sightseeing, food, culture";
 
-  const prompt = `You are an expert travel planner. Create a detailed ${tripDays}-day travel itinerary for ${countryName}.
+  let prompt: string;
 
-${selectedActivities ? `The traveler is especially interested in these activities: ${selectedActivities}` : ""}
-Their general interests include: ${userInterests}
+  if (refineRequest && currentItinerary) {
+    // Refine existing itinerary
+    prompt = `You are an expert travel planner. The user has an existing itinerary for ${countryName} and wants to modify it.
 
-Return a JSON object with this exact structure (no markdown, no code fences, just valid JSON):
+Current itinerary:
+${currentItinerary}
+
+User's request: "${refineRequest}"
+
+Apply the user's changes to the itinerary. Return the COMPLETE updated itinerary as a JSON object (no markdown, no code fences, just valid JSON) with this structure:
 {
-  "title": "Your Trip to ${countryName}",
-  "summary": "A brief 1-2 sentence overview of the trip",
+  "title": "Trip title",
+  "summary": "Updated 1-2 sentence overview",
   "days": [
     {
       "day": 1,
@@ -35,7 +41,49 @@ Return a JSON object with this exact structure (no markdown, no code fences, jus
           "time": "9:00 AM",
           "title": "Activity name",
           "description": "What to do and tips",
-          "category": "sightseeing|food|adventure|culture|relaxation|shopping",
+          "category": "sightseeing|food|adventure|culture|relaxation|shopping|nightlife|nature",
+          "estimatedCost": "$20-30"
+        }
+      ]
+    }
+  ],
+  "accommodation": [
+    {
+      "area": "Neighborhood name",
+      "description": "Why this area is good",
+      "budgetRange": "$50-100/night",
+      "searchUrl": "https://www.google.com/travel/hotels/DESTINATION"
+    }
+  ],
+  "tips": ["Tip 1", "Tip 2", "Tip 3"],
+  "estimatedBudget": {
+    "accommodation": "$X-Y per night",
+    "food": "$X-Y per day",
+    "activities": "$X-Y total",
+    "transport": "$X-Y total"
+  }
+}`;
+  } else {
+    // Generate new itinerary
+    prompt = `You are an expert travel planner. Create a detailed ${tripDays}-day travel itinerary for ${countryName}.
+
+${selectedActivities ? `The traveler is especially interested in: ${selectedActivities}` : ""}
+Their general interests: ${userInterests}
+
+Return ONLY a JSON object (no markdown, no code fences, just valid JSON):
+{
+  "title": "Your Trip to ${countryName}",
+  "summary": "A brief 1-2 sentence overview",
+  "days": [
+    {
+      "day": 1,
+      "title": "Day title",
+      "activities": [
+        {
+          "time": "9:00 AM",
+          "title": "Activity name",
+          "description": "What to do and tips",
+          "category": "sightseeing|food|adventure|culture|relaxation|shopping|nightlife|nature",
           "estimatedCost": "$20-30"
         }
       ]
@@ -46,10 +94,10 @@ Return a JSON object with this exact structure (no markdown, no code fences, jus
       "area": "Neighborhood/area name",
       "description": "Why this area is good to stay",
       "budgetRange": "$50-100/night",
-      "searchUrl": "a Google search URL for hotels in that area"
+      "searchUrl": "https://www.google.com/travel/hotels/DESTINATION"
     }
   ],
-  "tips": ["Practical travel tip 1", "Practical travel tip 2", "Practical travel tip 3"],
+  "tips": ["Practical tip 1", "Practical tip 2", "Practical tip 3"],
   "estimatedBudget": {
     "accommodation": "$X-Y per night",
     "food": "$X-Y per day",
@@ -58,7 +106,8 @@ Return a JSON object with this exact structure (no markdown, no code fences, jus
   }
 }
 
-Make it specific and practical. Include real place names, real neighborhoods, and realistic prices. For accommodation searchUrl, use format: https://www.google.com/travel/hotels/DESTINATION`;
+Use real, specific place names and realistic prices. Include 2-3 accommodation area options with different vibes/budgets.`;
+  }
 
   try {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -71,7 +120,7 @@ Make it specific and practical. Include real place names, real neighborhoods, an
         model: "gpt-4o-mini",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.7,
-        max_tokens: 3000,
+        max_tokens: 4000,
       }),
     });
 
@@ -83,7 +132,6 @@ Make it specific and practical. Include real place names, real neighborhoods, an
 
     const content = data.choices[0].message.content.trim();
 
-    // Parse the JSON response (handle potential code fences)
     let itinerary;
     try {
       const jsonStr = content.replace(/^```json?\n?/, "").replace(/\n?```$/, "");
