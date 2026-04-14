@@ -7,7 +7,7 @@ import Link from "next/link";
 import { TravelPlan } from "@/lib/types";
 import { createClerkSupabaseClient } from "@/lib/supabase";
 import { planFromRow } from "@/lib/mappers/travelPlan";
-import { TravelPlanProvider, useTravelPlans } from "@/context/TravelPlanContext";
+import { useTravelPlans } from "@/context/TravelPlanContext";
 import { useBucketList } from "@/context/BucketListContext";
 import SavedPlanEditor from "@/components/personal/SavedPlanEditor";
 import LoadingSpinner from "@/components/shared/LoadingSpinner";
@@ -27,15 +27,24 @@ function PlanLoader({ planId }: { planId: string }) {
     [session]
   );
 
-  // Fetch plan + seed context
   useEffect(() => {
     if (!session || !user) return;
     let cancelled = false;
 
     async function loadPlan() {
       setLoading(true);
-      const client = createClerkSupabaseClient(getToken);
 
+      // Check context first
+      const existing = allPlans.find((p) => p.id === planId);
+      if (existing) {
+        setPlan(existing);
+        await Promise.all([fetchItinerary(planId), fetchAccommodations(planId), fetchTransports(planId), fetchTripNotes(planId)]);
+        if (!cancelled) setLoading(false);
+        return;
+      }
+
+      // Fallback: fetch from Supabase
+      const client = createClerkSupabaseClient(getToken);
       const { data: planData, error: planErr } = await client
         .from("travel_plans").select("*").eq("id", planId).maybeSingle();
 
@@ -45,22 +54,14 @@ function PlanLoader({ planId }: { planId: string }) {
       const loadedPlan = planFromRow(planData as Record<string, unknown>);
       setPlan(loadedPlan);
 
-      // Fetch all related data in parallel
-      await Promise.all([
-        fetchItinerary(planId),
-        fetchAccommodations(planId),
-        fetchTransports(planId),
-        fetchTripNotes(planId),
-      ]);
-
+      await Promise.all([fetchItinerary(planId), fetchAccommodations(planId), fetchTransports(planId), fetchTripNotes(planId)]);
       if (!cancelled) setLoading(false);
     }
 
     loadPlan();
     return () => { cancelled = true; };
-  }, [session, user, planId, getToken, dispatch]);
+  }, [session, user, planId, getToken, allPlans, fetchItinerary, fetchAccommodations, fetchTransports, fetchTripNotes]);
 
-  // Listen to context for live updates
   const items = itineraryItems[planId] || [];
   const accoms = accommodations[planId] || [];
   const trans = transports[planId] || [];
@@ -76,27 +77,38 @@ function PlanLoader({ planId }: { planId: string }) {
     );
   }
 
+  const handleDelete = () => {
+    dispatch({ type: "DELETE_PLAN", payload: { id: plan.id } });
+    const otherPlans = allPlans.filter((p) => p.countryCode === plan.countryCode && p.id !== plan.id);
+    if (otherPlans.length === 0) {
+      const bi = bucketItems.find((i) => i.countryCode === plan.countryCode && i.status === "planning");
+      if (bi) bucketDispatch({ type: "UPDATE_ITEM", payload: { id: bi.id, status: "want_to_visit" } });
+    }
+    router.push("/personal");
+  };
+
+  const handleComplete = () => {
+    dispatch({ type: "UPDATE_PLAN", payload: { id: plan.id, status: "completed" } });
+    // Update bucket list to "visited"
+    const bi = bucketItems.find((i) => i.countryCode === plan.countryCode);
+    if (bi && bi.status !== "visited") {
+      bucketDispatch({ type: "UPDATE_ITEM", payload: { id: bi.id, status: "visited" } });
+    }
+  };
+
   return (
     <SavedPlanEditor plan={plan} items={items} accoms={accoms} transports={trans} notes={notes}
-      onDelete={() => {
-        dispatch({ type: "DELETE_PLAN", payload: { id: plan.id } });
-        const otherPlans = allPlans.filter((p) => p.countryCode === plan.countryCode && p.id !== plan.id);
-        if (otherPlans.length === 0) {
-          const bi = bucketItems.find((i) => i.countryCode === plan.countryCode && i.status === "planning");
-          if (bi) bucketDispatch({ type: "UPDATE_ITEM", payload: { id: bi.id, status: "want_to_visit" } });
-        }
-        router.push("/personal");
-      }} />
+      onDelete={handleDelete} onComplete={handleComplete} />
   );
 }
 
 export default function TripPlannerClient({ planId }: { planId: string }) {
   return (
-    <TravelPlanProvider>
+    <>
       <Link href="/personal" className="text-sm text-gray-500 hover:text-teal-600 transition-colors mb-4 inline-block">
         &larr; Back to My Trips
       </Link>
       <PlanLoader planId={planId} />
-    </TravelPlanProvider>
+    </>
   );
 }

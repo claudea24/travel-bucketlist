@@ -13,11 +13,12 @@ interface Props {
   transports: PlanTransport[];
   notes: TripNote[];
   onDelete: () => void;
+  onComplete: () => void;
 }
 
 type Tab = "overview" | "hotels" | "transport" | "notes" | number;
 
-export default function SavedPlanEditor({ plan, items, accoms, transports, notes, onDelete }: Props) {
+export default function SavedPlanEditor({ plan, items, accoms, transports, notes, onDelete, onComplete }: Props) {
   const { dispatch, addTransport, updateTransport, deleteTransport, addTripNote, deleteTripNote } = useTravelPlans();
   const initialDay = items.length > 0 ? Math.min(...items.map((i) => i.dayNumber || 1)) : 1;
   const [activeTab, setActiveTab] = useState<Tab>(initialDay);
@@ -124,7 +125,7 @@ export default function SavedPlanEditor({ plan, items, accoms, transports, notes
         <button onClick={() => setActiveTab("transport")} className={`px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${activeTab === "transport" ? "bg-teal-500 text-white" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}>🚗 Transport</button>
         <button onClick={() => setActiveTab("notes")} className={`px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${activeTab === "notes" ? "bg-teal-500 text-white" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}>📝 Notes</button>
         {plan.status !== "completed" && (
-          <button onClick={() => dispatch({ type: "UPDATE_PLAN", payload: { id: plan.id, status: "completed" } })}
+          <button onClick={onComplete}
             className="px-4 py-2.5 bg-green-50 text-green-700 rounded-xl text-sm font-medium hover:bg-green-100 whitespace-nowrap">✅ Complete</button>
         )}
         {plan.status === "completed" && (
