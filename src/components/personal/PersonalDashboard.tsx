@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useBucketList } from "@/context/BucketListContext";
 import { useTravelPlans } from "@/context/TravelPlanContext";
-import { BucketListItem } from "@/lib/types";
 import LoadingSpinner from "@/components/shared/LoadingSpinner";
 import EmptyState from "@/components/shared/EmptyState";
 import TravelPlanCard from "./TravelPlanCard";
@@ -30,18 +29,6 @@ export default function PersonalDashboard() {
     setEditingNotes(null);
   };
 
-  const handleCreatePlan = (item: BucketListItem) => {
-    const plan = {
-      id: crypto.randomUUID(), userId: "", bucketListItemId: item.id,
-      countryCode: item.countryCode, countryName: item.countryName,
-      title: `Trip to ${item.countryName}`, startDate: null, endDate: null,
-      budgetAmount: null, budgetCurrency: "USD", status: "draft" as const,
-      notes: null, summary: null, tips: [],
-      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    };
-    planDispatch({ type: "ADD_PLAN", payload: plan });
-    dispatch({ type: "UPDATE_ITEM", payload: { id: item.id, status: "planning" } });
-  };
 
   if (isLoading) return <LoadingSpinner message="Loading your trips..." />;
 
@@ -136,10 +123,10 @@ export default function PersonalDashboard() {
                       View Plan
                     </Link>
                   ) : (
-                    <button onClick={() => handleCreatePlan(item)}
+                    <Link href={`/country/${item.countryCode}`}
                       className="text-xs px-3 py-1.5 bg-teal-50 text-teal-700 rounded-lg hover:bg-teal-100">
                       Plan Trip
-                    </button>
+                    </Link>
                   )}
                   <button onClick={() => handleRemove(item.id)}
                     className="text-xs px-3 py-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100">

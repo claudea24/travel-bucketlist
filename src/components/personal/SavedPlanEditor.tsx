@@ -4,6 +4,7 @@ import { useState } from "react";
 import { TravelPlan, ItineraryItem, PlanAccommodation } from "@/lib/types";
 import { useTravelPlans } from "@/context/TravelPlanContext";
 import DaySchedule from "./DaySchedule";
+import ConfirmModal from "@/components/shared/ConfirmModal";
 
 interface Props {
   plan: TravelPlan;
@@ -26,6 +27,7 @@ export default function SavedPlanEditor({ plan, items, accoms, onDelete }: Props
   const [refineInput, setRefineInput] = useState("");
   const [refineLoading, setRefineLoading] = useState(false);
   const [editingAccom, setEditingAccom] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Group items by day
   const dayGroups: Record<number, ItineraryItem[]> = {};
@@ -101,7 +103,7 @@ export default function SavedPlanEditor({ plan, items, accoms, onDelete }: Props
             </div>
             <div className="flex gap-2">
               <button onClick={() => setEditingHeader(true)} className="px-3 py-1.5 bg-white/20 text-white text-xs rounded-lg hover:bg-white/30">Edit</button>
-              <button onClick={onDelete} className="px-3 py-1.5 bg-white/20 text-white text-xs rounded-lg hover:bg-rose-500/50">Delete</button>
+              <button onClick={() => setShowDeleteConfirm(true)} className="px-3 py-1.5 bg-white/20 text-white text-xs rounded-lg hover:bg-rose-500/50">Delete</button>
             </div>
           </div>
         )}
@@ -240,6 +242,12 @@ export default function SavedPlanEditor({ plan, items, accoms, onDelete }: Props
             <a href={`https://www.google.com/travel/flights?q=flights+to+${encodeURIComponent(plan.countryName)}`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-sky-50 text-sky-600 rounded-lg text-xs font-medium hover:bg-sky-100 inline-block">Search Flights</a>
           </div>
         </div>
+      )}
+      {showDeleteConfirm && (
+        <ConfirmModal title="Delete Trip Plan?" message={`"${plan.title}" and all its activities will be permanently deleted.`}
+          confirmLabel="Delete" danger
+          onConfirm={() => { setShowDeleteConfirm(false); onDelete(); }}
+          onCancel={() => setShowDeleteConfirm(false)} />
       )}
     </div>
   );

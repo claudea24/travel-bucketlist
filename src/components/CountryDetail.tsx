@@ -26,16 +26,16 @@ export default function CountryDetail({ code }: CountryDetailProps) {
   const [manualStartDate, setManualStartDate] = useState("");
   const [manualEndDate, setManualEndDate] = useState("");
   const [creatingPlan, setCreatingPlan] = useState(false);
-  const [existingPlanId, setExistingPlanId] = useState<string | null>(null);
+  const [existingPlans, setExistingPlans] = useState<{ id: string; title: string }[]>([]);
   const { items, dispatch } = useBucketList();
 
-  // Check if a plan already exists for this country
+  // Check if plans exist for this country
   useEffect(() => {
     if (!session) return;
     const client = createClerkSupabaseClient(() => session.getToken({ template: "supabase" }));
-    client.from("travel_plans").select("id").eq("country_code", code).limit(1)
+    client.from("travel_plans").select("id, title").eq("country_code", code)
       .then(({ data }) => {
-        if (data && data.length > 0) setExistingPlanId(data[0].id as string);
+        if (data && data.length > 0) setExistingPlans(data as { id: string; title: string }[]);
       });
   }, [session, code]);
 
@@ -199,11 +199,27 @@ export default function CountryDetail({ code }: CountryDetailProps) {
               {saved ? "Saved" : "Save"}
             </button>
 
-            {existingPlanId && (
-              <Link href={`/personal/plan/${existingPlanId}`}
+            {existingPlans.length === 1 && (
+              <Link href={`/personal/plan/${existingPlans[0].id}`}
                 className="flex items-center gap-2 px-5 py-2.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-sm font-medium hover:bg-amber-100 transition-all">
                 📋 View My Trip
               </Link>
+            )}
+
+            {existingPlans.length > 1 && (
+              <div className="relative group">
+                <button className="flex items-center gap-2 px-5 py-2.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-sm font-medium hover:bg-amber-100 transition-all">
+                  📋 My Trips ({existingPlans.length})
+                </button>
+                <div className="absolute top-full left-0 mt-1 w-64 bg-white rounded-xl border border-gray-200 shadow-lg z-20 hidden group-focus-within:block group-hover:block">
+                  {existingPlans.map((p) => (
+                    <Link key={p.id} href={`/personal/plan/${p.id}`}
+                      className="block px-4 py-3 text-sm text-gray-700 hover:bg-teal-50 first:rounded-t-xl last:rounded-b-xl transition-colors">
+                      {p.title}
+                    </Link>
+                  ))}
+                </div>
+              </div>
             )}
 
             <div className="relative">
@@ -211,7 +227,7 @@ export default function CountryDetail({ code }: CountryDetailProps) {
                 onClick={() => setShowPlanOptions(!showPlanOptions)}
                 className="flex items-center gap-2 px-5 py-2.5 bg-teal-500 text-white rounded-xl text-sm font-medium hover:bg-teal-600 shadow-sm transition-all"
               >
-                ✈️ {existingPlanId ? "New Trip" : "Plan My Trip"}
+                ✈️ {existingPlans.length > 0 ? "New Trip" : "Plan My Trip"}
               </button>
 
               {showPlanOptions && (
