@@ -218,7 +218,7 @@ export default function ActivitySection({ countryName, countryCode, onSelectActi
                   {config.emoji} {config.label}
                 </span>
 
-                <button onClick={() => toggleSaveActivity(activity.name)}
+                <button onClick={(e) => { e.stopPropagation(); toggleSaveActivity(activity.name); }}
                   className={`absolute top-2.5 right-2.5 w-8 h-8 flex items-center justify-center rounded-full transition-all ${
                     isSaved ? "bg-rose-500 text-white" : "bg-white/70 backdrop-blur-sm text-gray-500 hover:text-rose-500 hover:bg-white"
                   }`}>
