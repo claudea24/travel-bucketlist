@@ -129,9 +129,23 @@ export function TravelPlanProvider({ children }: { children: ReactNode }) {
     };
 
     const { error: planError } = await client.from("travel_plans").insert(planRow);
-    if (planError) { console.error("Failed to save plan:", planError); return null; }
+    if (planError) { console.error("Failed to save plan:", JSON.stringify(planError)); return null; }
 
     // 2. Insert all itinerary items
+    const validCategories = new Set(["transport", "accommodation", "activity", "food", "other"]);
+    const mapCategory = (cat: string) => validCategories.has(cat) ? cat : "activity";
+    const parseTime = (t: string | null): string | null => {
+      if (!t) return null;
+      // Convert "9:00 AM" → "09:00:00" for Postgres TIME type
+      const match = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+      if (!match) return null;
+      let hours = parseInt(match[1]);
+      const mins = match[2];
+      if (match[3]?.toUpperCase() === "PM" && hours < 12) hours += 12;
+      if (match[3]?.toUpperCase() === "AM" && hours === 12) hours = 0;
+      return `${hours.toString().padStart(2, "0")}:${mins}:00`;
+    };
+
     const itinRows = aiPlan.days.flatMap((day) =>
       day.activities.map((act, i) => ({
         id: act.id || crypto.randomUUID(),
@@ -140,8 +154,8 @@ export function TravelPlanProvider({ children }: { children: ReactNode }) {
         day_number: day.day,
         title: act.title,
         description: act.description || null,
-        category: act.category || "activity",
-        start_time: act.time || null,
+        category: mapCategory(act.category || "activity"),
+        start_time: parseTime(act.time),
         estimated_cost: act.estimatedCost ? parseFloat(act.estimatedCost.replace(/[^0-9.]/g, "")) || null : null,
         sort_order: i,
       }))
@@ -149,7 +163,7 @@ export function TravelPlanProvider({ children }: { children: ReactNode }) {
 
     if (itinRows.length > 0) {
       const { error: itinError } = await client.from("itinerary_items").insert(itinRows);
-      if (itinError) console.error("Failed to save itinerary:", itinError);
+      if (itinError) console.error("Failed to save itinerary:", JSON.stringify(itinError));
     }
 
     // 3. Insert accommodations

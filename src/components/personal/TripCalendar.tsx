@@ -184,24 +184,32 @@ export default function TripCalendar({ plan, onUpdatePlan, onRegenerate }: TripC
     setRefineLoading(false);
   };
 
+  const [saveError, setSaveError] = useState("");
+
   const handleSave = async () => {
     setSaving(true);
-    const planId = await saveAiPlan({
-      countryCode: plan.countryCode,
-      countryName: plan.countryName,
-      title: plan.title,
-      summary: plan.summary,
-      tips: plan.tips || [],
-      estimatedBudget: plan.estimatedBudget || {},
-      days: plan.days,
-      accommodation: plan.accommodation || [],
-    });
-    setSaving(false);
-    if (planId) {
-      setSaved(true);
-      // Redirect to the saved plan's edit page after a short delay
-      setTimeout(() => router.push(`/personal/plan/${planId}`), 1000);
+    setSaveError("");
+    try {
+      const planId = await saveAiPlan({
+        countryCode: plan.countryCode,
+        countryName: plan.countryName,
+        title: plan.title,
+        summary: plan.summary,
+        tips: plan.tips || [],
+        estimatedBudget: plan.estimatedBudget || {},
+        days: plan.days,
+        accommodation: plan.accommodation || [],
+      });
+      if (planId) {
+        setSaved(true);
+        setTimeout(() => router.push(`/personal/plan/${planId}`), 1000);
+      } else {
+        setSaveError("Failed to save. Check browser console for details.");
+      }
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Failed to save");
     }
+    setSaving(false);
   };
 
   return (
@@ -359,6 +367,10 @@ export default function TripCalendar({ plan, onUpdatePlan, onRegenerate }: TripC
             ))}
           </div>
         </div>
+      )}
+
+      {saveError && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl text-sm">{saveError}</div>
       )}
 
       {/* Action bar */}
