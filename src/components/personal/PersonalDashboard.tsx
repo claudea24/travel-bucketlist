@@ -90,22 +90,6 @@ export default function PersonalDashboard() {
             ))
           )}
 
-          {/* Countries in "planning" status without a plan */}
-          {planning.filter((item) => !plans.some((p) => p.bucketListItemId === item.id)).length > 0 && (
-            <div className="mt-4">
-              <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-2">Needs a plan</p>
-              {planning.filter((item) => !plans.some((p) => p.bucketListItemId === item.id)).map((item) => (
-                <div key={item.id} className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl mb-2">
-                  {item.flagUrl && <img src={item.flagUrl} alt={item.countryName} className="w-10 h-7 rounded object-cover border border-amber-200" />}
-                  <span className="text-sm font-medium text-gray-900 flex-1">{item.countryName}</span>
-                  <Link href={`/country/${item.countryCode}`}
-                    className="text-xs px-3 py-1.5 bg-amber-500 text-white rounded-lg hover:bg-amber-600">
-                    Plan Trip
-                  </Link>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
 
@@ -146,10 +130,17 @@ export default function PersonalDashboard() {
                   ) : null}
                 </div>
                 <div className="flex gap-2 flex-shrink-0">
-                  <button onClick={() => handleCreatePlan(item)}
-                    className="text-xs px-3 py-1.5 bg-teal-50 text-teal-700 rounded-lg hover:bg-teal-100">
-                    Plan Trip
-                  </button>
+                  {plans.some((p) => p.countryCode === item.countryCode) ? (
+                    <Link href={`/personal/plan/${plans.find((p) => p.countryCode === item.countryCode)!.id}`}
+                      className="text-xs px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100">
+                      View Plan
+                    </Link>
+                  ) : (
+                    <button onClick={() => handleCreatePlan(item)}
+                      className="text-xs px-3 py-1.5 bg-teal-50 text-teal-700 rounded-lg hover:bg-teal-100">
+                      Plan Trip
+                    </button>
+                  )}
                   <button onClick={() => handleRemove(item.id)}
                     className="text-xs px-3 py-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100">
                     Remove
