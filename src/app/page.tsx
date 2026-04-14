@@ -1,15 +1,17 @@
-import ExploreCountries from "@/components/ExploreCountries";
+import HomeFeed from "@/components/home/HomeFeed";
 
 export default function HomePage() {
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Explore Countries</h1>
+    <div className="max-w-6xl mx-auto px-5 py-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
+          Discover
+        </h1>
         <p className="text-gray-500 mt-1">
-          Search and browse countries around the world. Save the ones you want to visit!
+          Find your next adventure. Browse destinations and build your bucket list.
         </p>
       </div>
-      <ExploreCountries />
+      <HomeFeed />
     </div>
   );
 }

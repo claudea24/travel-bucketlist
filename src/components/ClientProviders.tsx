@@ -2,7 +2,14 @@
 
 import { ReactNode } from "react";
 import { BucketListProvider } from "@/context/BucketListContext";
+import { ProfileProvider } from "@/context/ProfileContext";
 
 export default function ClientProviders({ children }: { children: ReactNode }) {
-  return <BucketListProvider>{children}</BucketListProvider>;
+  return (
+    <ProfileProvider>
+      <BucketListProvider>
+        {children}
+      </BucketListProvider>
+    </ProfileProvider>
+  );
 }

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Country } from "@/lib/types";
 import { getCountryByCode } from "@/lib/countries";
 import { useBucketList } from "@/context/BucketListContext";
+import StatusBadge from "@/components/shared/StatusBadge";
+import LoadingSpinner from "@/components/shared/LoadingSpinner";
 
 interface CountryDetailProps {
   code: string;
@@ -54,16 +56,14 @@ export default function CountryDetail({ code }: CountryDetailProps) {
     }
   }
 
-  if (loading) {
-    return <div className="text-center py-12 text-gray-500">Loading country details...</div>;
-  }
+  if (loading) return <LoadingSpinner message="Loading country details..." />;
 
   if (!country) {
     return (
-      <div className="text-center py-12">
+      <div className="text-center py-20">
         <p className="text-gray-500">Country not found.</p>
-        <Link href="/" className="text-emerald-600 hover:underline mt-2 inline-block">
-          Back to Explore
+        <Link href="/" className="text-teal-600 hover:underline mt-2 inline-block">
+          Back to Discover
         </Link>
       </div>
     );
@@ -78,14 +78,13 @@ export default function CountryDetail({ code }: CountryDetailProps) {
 
   return (
     <div>
-      {/* Back link */}
-      <Link href="/" className="text-sm text-gray-500 hover:text-emerald-600 transition-colors">
-        &larr; Back to Explore
+      <Link href="/" className="text-sm text-gray-500 hover:text-teal-600 transition-colors">
+        &larr; Back to Discover
       </Link>
 
       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Flag */}
-        <div className="rounded-lg overflow-hidden border border-gray-200">
+        <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-white">
           {country.flags?.svg ? (
             <img
               src={country.flags.svg}
@@ -93,7 +92,7 @@ export default function CountryDetail({ code }: CountryDetailProps) {
               className="w-full h-auto"
             />
           ) : (
-            <div className="h-64 bg-gray-100 flex items-center justify-center text-gray-400">
+            <div className="h-64 bg-gray-50 flex items-center justify-center text-gray-400">
               No flag available
             </div>
           )}
@@ -103,46 +102,46 @@ export default function CountryDetail({ code }: CountryDetailProps) {
         <div>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">{country.name.common}</h1>
-              <p className="text-gray-500 mt-1">{country.name.official}</p>
+              <h1 className="text-3xl font-bold text-gray-900 tracking-tight">{country.name.common}</h1>
+              <p className="text-gray-500 mt-0.5">{country.name.official}</p>
             </div>
-            <button
-              onClick={handleSave}
-              className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                saved
-                  ? "bg-red-50 text-red-600 hover:bg-red-100"
-                  : "bg-emerald-600 text-white hover:bg-emerald-700"
-              }`}
-            >
-              {saved ? "Remove from Bucket List" : "Add to Bucket List"}
-            </button>
           </div>
 
-          {saved && (
-            <div className="mt-3 flex items-center gap-2">
-              <span className="text-sm text-gray-500">Status:</span>
-              <button
-                onClick={() =>
-                  dispatch({
-                    type: "UPDATE_ITEM",
-                    payload: {
-                      id: saved.id,
-                      status: saved.status === "want_to_visit" ? "visited" : "want_to_visit",
-                    },
-                  })
-                }
-                className={`text-xs px-3 py-1 rounded-full font-medium cursor-pointer ${
-                  saved.status === "visited"
-                    ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
-                    : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-                }`}
-              >
-                {saved.status === "visited" ? "Visited" : "Want to Visit"}
-              </button>
-            </div>
-          )}
+          {/* Action buttons */}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleSave}
+              className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                saved
+                  ? "bg-rose-50 text-rose-600 hover:bg-rose-100"
+                  : "bg-teal-500 text-white hover:bg-teal-600 shadow-sm"
+              }`}
+            >
+              {saved ? "♥ Remove from Bucket List" : "♡ Add to Bucket List"}
+            </button>
 
-          <div className="mt-6 space-y-3">
+            {saved && (
+              <div className="flex items-center gap-2">
+                <StatusBadge status={saved.status} />
+                {(["want_to_visit", "planning", "visited"] as const).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => dispatch({ type: "UPDATE_ITEM", payload: { id: saved.id, status: s } })}
+                    className={`text-xs px-2.5 py-1 rounded-full transition-all ${
+                      saved.status === s
+                        ? "ring-2 ring-teal-500 ring-offset-1"
+                        : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                    }`}
+                  >
+                    {s === "want_to_visit" ? "Want" : s === "planning" ? "Planning" : "Visited"}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Info grid */}
+          <div className="mt-6 bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
             <InfoRow label="Capital" value={country.capital?.join(", ") || "N/A"} />
             <InfoRow label="Region" value={country.region} />
             <InfoRow label="Subregion" value={country.subregion || "N/A"} />
@@ -161,7 +160,7 @@ export default function CountryDetail({ code }: CountryDetailProps) {
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex gap-3">
-      <span className="text-sm font-medium text-gray-500 w-28 shrink-0">{label}</span>
+      <span className="text-sm font-medium text-gray-400 w-28 shrink-0">{label}</span>
       <span className="text-sm text-gray-900">{value}</span>
     </div>
   );
