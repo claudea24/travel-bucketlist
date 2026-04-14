@@ -1,6 +1,6 @@
 # Wanderlust — Travel Bucket List
 
-A travel planning app with three main experiences: **Discover** destinations with rich photos, **Personal** trip planning with itinerary builder, and a **Community** social feed for sharing stories and tips.
+A travel planning app with two main experiences: **Discover** destinations with rich photos and AI-powered activity suggestions, and **Personal** trip planning with AI itinerary builder and drag-and-drop calendar.
 
 **GitHub**: https://github.com/claudea24/travel-bucketlist
 **Live URL**: https://travelbucketlist-tan.vercel.app
@@ -24,9 +24,6 @@ A travel planning app with three main experiences: **Discover** destinations wit
 | `/` | **Discover** — photo-rich destination feed with category filters |
 | `/personal` | **My Trips** — bucket list + travel plan management |
 | `/personal/plan/[planId]` | Trip planner — dates, budget, day-by-day itinerary |
-| `/social` | **Community** — social feed of stories + tips |
-| `/social/create` | Create a new post (story or tip) |
-| `/social/post/[postId]` | Post detail with comments |
 | `/country/[code]` | Country detail — full info, save/status controls |
 | `/sign-in`, `/sign-up` | Clerk authentication |
 | `/bucket-list` | Redirects to `/personal` (legacy) |
@@ -45,24 +42,16 @@ A travel planning app with three main experiences: **Discover** destinations wit
 | Table | Purpose |
 |---|---|
 | `bucket_list` | User's saved destinations (status: want_to_visit/planning/visited) |
-| `profiles` | User profile cache for social features |
+| `profiles` | User profile cache |
 | `destinations` | Pre-seeded destination cards with Pexels photos |
-| `destination_activities` | Things to do at destinations (from OpenTripMap) |
+| `destination_activities` | Things to do at destinations |
 | `user_activities` | Activities saved to personal bucket list items |
 | `travel_plans` | Trip plans (dates, budget, linked to bucket list items) |
 | `itinerary_items` | Day-by-day items within a travel plan |
-| `social_posts` | Travel stories and tips |
-| `post_comments` | Comments on social posts |
-| `post_likes` | Like/unlike with UNIQUE(post_id, user_id) |
-| `follows` | Follow relationships between users |
-
-### DB Triggers
-- `trigger_update_likes_count` — auto-updates `social_posts.likes_count`
-- `trigger_update_comments_count` — auto-updates `social_posts.comments_count`
 
 ### Column Name Mapping
 Database uses snake_case, TypeScript uses camelCase. Mapper files in `src/lib/mappers/`:
-- `profile.ts`, `destination.ts`, `travelPlan.ts`, `social.ts`, `userActivity.ts`
+- `profile.ts`, `destination.ts`, `travelPlan.ts`, `userActivity.ts`
 
 Legacy mappers in `src/lib/supabase.ts`: `itemFromRow()` / `itemToRow()`
 
@@ -73,7 +62,6 @@ Legacy mappers in `src/lib/supabase.ts`: `itemFromRow()` / `itemToRow()`
 | `BucketListContext` | `src/context/BucketListContext.tsx` | Bucket list items (loads on auth) |
 | `ProfileContext` | `src/context/ProfileContext.tsx` | Current user profile (loads on auth) |
 | `TravelPlanContext` | `src/context/TravelPlanContext.tsx` | Travel plans + itinerary (lazy, on /personal) |
-| `SocialContext` | `src/context/SocialContext.tsx` | Social feed, likes, follows (lazy, on /social) |
 
 All contexts use optimistic updates with Supabase persistence and rollback on error.
 
@@ -171,11 +159,6 @@ src/
 │   │   └── plan/[planId]/
 │   │       ├── page.tsx              # Trip planner
 │   │       └── TripPlannerClient.tsx
-│   ├── social/
-│   │   ├── page.tsx                  # Community feed
-│   │   ├── SocialPageClient.tsx
-│   │   ├── create/                   # Create post
-│   │   └── post/[postId]/            # Post detail
 │   ├── country/[code]/page.tsx       # Country detail
 │   ├── sign-in/[[...sign-in]]/
 │   └── sign-up/[[...sign-up]]/
@@ -200,12 +183,7 @@ src/
 │   │   ├── TripPlanner.tsx
 │   │   ├── TripSetup.tsx             # Trip planning setup wizard
 │   │   └── TripCalendar.tsx          # Diary/calendar view with drag-and-drop
-│   ├── social/                       # Community components
-│   │   ├── SocialFeed.tsx
-│   │   ├── PostCard.tsx
-│   │   ├── PostDetail.tsx
-│   │   └── CreatePostForm.tsx
-│   ├── Navbar.tsx                    # Top nav (Discover/My Trips/Community)
+│   ├── Navbar.tsx                    # Top nav (Discover/My Trips)
 │   ├── ClientProviders.tsx           # Context wrapper
 │   ├── CountryCard.tsx               # Legacy country card
 │   ├── CountryDetail.tsx             # Country detail page
@@ -214,8 +192,7 @@ src/
 ├── context/
 │   ├── BucketListContext.tsx
 │   ├── ProfileContext.tsx
-│   ├── TravelPlanContext.tsx
-│   └── SocialContext.tsx
+│   └── TravelPlanContext.tsx
 ├── lib/
 │   ├── types.ts                      # All TypeScript interfaces + action types
 │   ├── supabase.ts                   # Supabase client + legacy row mappers
@@ -224,7 +201,6 @@ src/
 │       ├── profile.ts
 │       ├── destination.ts
 │       ├── travelPlan.ts
-│       ├── social.ts
 │       └── userActivity.ts
 └── middleware.ts                     # Clerk route protection
 ```

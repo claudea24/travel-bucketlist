@@ -138,45 +138,6 @@ export interface ItineraryItem {
   createdAt: string;
 }
 
-// Social post (story or tip)
-export interface SocialPost {
-  id: string;
-  userId: string;
-  postType: "story" | "tip";
-  countryCode: string | null;
-  countryName: string | null;
-  title: string;
-  content: string;
-  photoUrls: string[];
-  tags: string[];
-  likesCount: number;
-  commentsCount: number;
-  isPublished: boolean;
-  createdAt: string;
-  updatedAt: string;
-  author?: UserProfile;
-  isLikedByMe?: boolean;
-}
-
-// Comment on a social post
-export interface PostComment {
-  id: string;
-  postId: string;
-  userId: string;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-  author?: UserProfile;
-}
-
-// Follow relationship
-export interface Follow {
-  id: string;
-  followerId: string;
-  followingId: string;
-  createdAt: string;
-}
-
 // --- Actions for state management ---
 
 export type BucketListAction =
@@ -198,14 +159,3 @@ export type TravelPlanAction =
   | { type: "UPDATE_ITINERARY_ITEM"; payload: { id: string } & Partial<ItineraryItem> }
   | { type: "DELETE_ITINERARY_ITEM"; payload: { id: string; planId: string } };
 
-export type SocialAction =
-  | { type: "SET_FEED"; payload: SocialPost[] }
-  | { type: "APPEND_FEED"; payload: SocialPost[] }
-  | { type: "ADD_POST"; payload: SocialPost }
-  | { type: "DELETE_POST"; payload: { id: string } }
-  | { type: "TOGGLE_LIKE"; payload: { postId: string; liked: boolean } }
-  | { type: "ADD_COMMENT"; payload: { postId: string; comment: PostComment } }
-  | { type: "DELETE_COMMENT"; payload: { postId: string; commentId: string } }
-  | { type: "SET_FOLLOWING"; payload: string[] }
-  | { type: "FOLLOW_USER"; payload: string }
-  | { type: "UNFOLLOW_USER"; payload: string };

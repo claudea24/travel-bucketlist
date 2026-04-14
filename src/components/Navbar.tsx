@@ -10,7 +10,6 @@ export default function Navbar() {
   const links = [
     { href: "/", label: "Discover" },
     { href: "/personal", label: "My Trips" },
-    { href: "/social", label: "Community" },
   ];
 
   const isActive = (href: string) => {
