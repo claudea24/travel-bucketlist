@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useTravelPlans } from "@/context/TravelPlanContext";
 import {
   DndContext,
   closestCenter,
@@ -96,8 +98,11 @@ interface TripCalendarProps {
 }
 
 export default function TripCalendar({ plan, onUpdatePlan, onRegenerate }: TripCalendarProps) {
+  const router = useRouter();
+  const { saveAiPlan } = useTravelPlans();
   const [refineInput, setRefineInput] = useState("");
   const [refineLoading, setRefineLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [activeDay, setActiveDay] = useState(0);
 
@@ -179,9 +184,24 @@ export default function TripCalendar({ plan, onUpdatePlan, onRegenerate }: TripC
     setRefineLoading(false);
   };
 
-  const handleSave = () => {
-    localStorage.setItem(`trip_plan_${plan.countryCode}_saved`, JSON.stringify({ ...plan, savedAt: new Date().toISOString() }));
-    setSaved(true);
+  const handleSave = async () => {
+    setSaving(true);
+    const planId = await saveAiPlan({
+      countryCode: plan.countryCode,
+      countryName: plan.countryName,
+      title: plan.title,
+      summary: plan.summary,
+      tips: plan.tips || [],
+      estimatedBudget: plan.estimatedBudget || {},
+      days: plan.days,
+      accommodation: plan.accommodation || [],
+    });
+    setSaving(false);
+    if (planId) {
+      setSaved(true);
+      // Redirect to the saved plan's edit page after a short delay
+      setTimeout(() => router.push(`/personal/plan/${planId}`), 1000);
+    }
   };
 
   return (
@@ -347,13 +367,13 @@ export default function TripCalendar({ plan, onUpdatePlan, onRegenerate }: TripC
           className="px-5 py-3 bg-white text-gray-700 text-sm font-medium rounded-xl border border-gray-200 hover:bg-gray-50 shadow-sm transition-colors">
           Start Over
         </button>
-        <button onClick={handleSave}
+        <button onClick={handleSave} disabled={saving || saved}
           className={`flex-1 py-3 text-sm font-medium rounded-xl shadow-sm transition-colors ${
             saved
               ? "bg-green-50 text-green-700 border border-green-200"
-              : "bg-teal-500 text-white hover:bg-teal-600"
+              : "bg-teal-500 text-white hover:bg-teal-600 disabled:opacity-50"
           }`}>
-          {saved ? "✅ Saved to My Trips!" : "💾 Save Itinerary"}
+          {saving ? "Saving..." : saved ? "✅ Saved! Redirecting..." : "💾 Save to My Trips"}
         </button>
       </div>
     </div>

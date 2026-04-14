@@ -59,6 +59,8 @@ export default function PersonalDashboard() {
       budgetCurrency: "USD",
       status: "draft" as const,
       notes: null,
+      summary: null,
+      tips: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

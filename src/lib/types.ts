@@ -117,8 +117,27 @@ export interface TravelPlan {
   budgetCurrency: string;
   status: "draft" | "planning" | "booked" | "completed" | "cancelled";
   notes: string | null;
+  summary: string | null;
+  tips: string[];
   createdAt: string;
   updatedAt: string;
+}
+
+// Hotel/accommodation option within a travel plan
+export interface PlanAccommodation {
+  id: string;
+  travelPlanId: string;
+  userId: string;
+  area: string;
+  description: string | null;
+  budgetRange: string | null;
+  searchUrl: string | null;
+  chosenPlace: string | null;
+  chosenUrl: string | null;
+  userNotes: string | null;
+  isBooked: boolean;
+  sortOrder: number;
+  createdAt: string;
 }
 
 // Day-by-day item within a travel plan
@@ -157,5 +176,9 @@ export type TravelPlanAction =
   | { type: "SET_ITINERARY"; payload: { planId: string; items: ItineraryItem[] } }
   | { type: "ADD_ITINERARY_ITEM"; payload: ItineraryItem }
   | { type: "UPDATE_ITINERARY_ITEM"; payload: { id: string } & Partial<ItineraryItem> }
-  | { type: "DELETE_ITINERARY_ITEM"; payload: { id: string; planId: string } };
+  | { type: "DELETE_ITINERARY_ITEM"; payload: { id: string; planId: string } }
+  | { type: "SET_ACCOMMODATIONS"; payload: { planId: string; items: PlanAccommodation[] } }
+  | { type: "ADD_ACCOMMODATION"; payload: PlanAccommodation }
+  | { type: "UPDATE_ACCOMMODATION"; payload: { id: string } & Partial<PlanAccommodation> }
+  | { type: "DELETE_ACCOMMODATION"; payload: { id: string; planId: string } };
 

@@ -1,4 +1,4 @@
-import { TravelPlan, ItineraryItem } from "../types";
+import { TravelPlan, ItineraryItem, PlanAccommodation } from "../types";
 
 export function planFromRow(row: Record<string, unknown>): TravelPlan {
   return {
@@ -14,6 +14,8 @@ export function planFromRow(row: Record<string, unknown>): TravelPlan {
     budgetCurrency: (row.budget_currency as string) || "USD",
     status: row.status as TravelPlan["status"],
     notes: (row.notes as string) || null,
+    summary: (row.summary as string) || null,
+    tips: (row.tips as string[]) || [],
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
@@ -35,6 +37,42 @@ export function planToRow(
   if (plan.budgetCurrency !== undefined) row.budget_currency = plan.budgetCurrency;
   if (plan.status !== undefined) row.status = plan.status;
   if (plan.notes !== undefined) row.notes = plan.notes;
+  if (plan.summary !== undefined) row.summary = plan.summary;
+  if (plan.tips !== undefined) row.tips = plan.tips;
+  return row;
+}
+
+export function accommodationFromRow(row: Record<string, unknown>): PlanAccommodation {
+  return {
+    id: row.id as string,
+    travelPlanId: row.travel_plan_id as string,
+    userId: row.user_id as string,
+    area: row.area as string,
+    description: (row.description as string) || null,
+    budgetRange: (row.budget_range as string) || null,
+    searchUrl: (row.search_url as string) || null,
+    chosenPlace: (row.chosen_place as string) || null,
+    chosenUrl: (row.chosen_url as string) || null,
+    userNotes: (row.user_notes as string) || null,
+    isBooked: (row.is_booked as boolean) || false,
+    sortOrder: (row.sort_order as number) || 0,
+    createdAt: row.created_at as string,
+  };
+}
+
+export function accommodationToRow(item: Partial<PlanAccommodation>, userId: string): Record<string, unknown> {
+  const row: Record<string, unknown> = { user_id: userId };
+  if (item.id !== undefined) row.id = item.id;
+  if (item.travelPlanId !== undefined) row.travel_plan_id = item.travelPlanId;
+  if (item.area !== undefined) row.area = item.area;
+  if (item.description !== undefined) row.description = item.description;
+  if (item.budgetRange !== undefined) row.budget_range = item.budgetRange;
+  if (item.searchUrl !== undefined) row.search_url = item.searchUrl;
+  if (item.chosenPlace !== undefined) row.chosen_place = item.chosenPlace;
+  if (item.chosenUrl !== undefined) row.chosen_url = item.chosenUrl;
+  if (item.userNotes !== undefined) row.user_notes = item.userNotes;
+  if (item.isBooked !== undefined) row.is_booked = item.isBooked;
+  if (item.sortOrder !== undefined) row.sort_order = item.sortOrder;
   return row;
 }
 
