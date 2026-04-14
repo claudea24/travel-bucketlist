@@ -4,236 +4,187 @@ import { useState } from "react";
 import { useBucketList } from "@/context/BucketListContext";
 import { useTravelPlans } from "@/context/TravelPlanContext";
 import { BucketListItem } from "@/lib/types";
-import StatusBadge from "@/components/shared/StatusBadge";
 import LoadingSpinner from "@/components/shared/LoadingSpinner";
 import EmptyState from "@/components/shared/EmptyState";
 import TravelPlanCard from "./TravelPlanCard";
 import Link from "next/link";
 
-const FILTERS = [
-  { value: "all", label: "All" },
-  { value: "want_to_visit", label: "Want to Visit" },
-  { value: "planning", label: "Planning" },
-  { value: "visited", label: "Visited" },
-] as const;
+type Section = "plans" | "wishlist" | "visited";
 
 export default function PersonalDashboard() {
   const { items, isLoading, dispatch } = useBucketList();
   const { plans, dispatch: planDispatch } = useTravelPlans();
-  const [filter, setFilter] = useState("all");
+  const [section, setSection] = useState<Section>("plans");
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
   const [notesText, setNotesText] = useState("");
 
-  const filtered = filter === "all" ? items : items.filter((i) => i.status === filter);
+  const wishlist = items.filter((i) => i.status === "want_to_visit");
+  const planning = items.filter((i) => i.status === "planning");
+  const visited = items.filter((i) => i.status === "visited");
+  const activePlans = plans.filter((p) => p.status !== "completed" && p.status !== "cancelled");
 
-  const counts = {
-    want_to_visit: items.filter((i) => i.status === "want_to_visit").length,
-    planning: items.filter((i) => i.status === "planning").length,
-    visited: items.filter((i) => i.status === "visited").length,
-  };
-
-  const handleStatusChange = (item: BucketListItem, newStatus: BucketListItem["status"]) => {
-    dispatch({ type: "UPDATE_ITEM", payload: { id: item.id, status: newStatus } });
-  };
+  const handleRemove = (id: string) => dispatch({ type: "REMOVE_ITEM", payload: { id } });
 
   const handleSaveNotes = (id: string) => {
     dispatch({ type: "UPDATE_ITEM", payload: { id, notes: notesText } });
     setEditingNotes(null);
   };
 
-  const handleRemove = (id: string) => {
-    dispatch({ type: "REMOVE_ITEM", payload: { id } });
-  };
-
   const handleCreatePlan = (item: BucketListItem) => {
     const plan = {
-      id: crypto.randomUUID(),
-      userId: "",
-      bucketListItemId: item.id,
-      countryCode: item.countryCode,
-      countryName: item.countryName,
-      title: `Trip to ${item.countryName}`,
-      startDate: null,
-      endDate: null,
-      budgetAmount: null,
-      budgetCurrency: "USD",
-      status: "draft" as const,
-      notes: null,
-      summary: null,
-      tips: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      id: crypto.randomUUID(), userId: "", bucketListItemId: item.id,
+      countryCode: item.countryCode, countryName: item.countryName,
+      title: `Trip to ${item.countryName}`, startDate: null, endDate: null,
+      budgetAmount: null, budgetCurrency: "USD", status: "draft" as const,
+      notes: null, summary: null, tips: [],
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     };
     planDispatch({ type: "ADD_PLAN", payload: plan });
-    if (item.status === "want_to_visit") {
-      dispatch({ type: "UPDATE_ITEM", payload: { id: item.id, status: "planning" } });
-    }
+    dispatch({ type: "UPDATE_ITEM", payload: { id: item.id, status: "planning" } });
   };
 
   if (isLoading) return <LoadingSpinner message="Loading your trips..." />;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {[
-          { label: "Want to Visit", count: counts.want_to_visit, color: "bg-teal-50 text-teal-700" },
-          { label: "Planning", count: counts.planning, color: "bg-amber-50 text-amber-700" },
-          { label: "Visited", count: counts.visited, color: "bg-blue-50 text-blue-700" },
-          { label: "Total", count: items.length, color: "bg-gray-50 text-gray-700" },
+          { label: "Trip Plans", count: activePlans.length, icon: "📋", color: "bg-amber-50 text-amber-700" },
+          { label: "Want to Visit", count: wishlist.length, icon: "💛", color: "bg-teal-50 text-teal-700" },
+          { label: "Visited", count: visited.length, icon: "✅", color: "bg-blue-50 text-blue-700" },
         ].map((stat) => (
           <div key={stat.label} className={`${stat.color} rounded-2xl p-4 text-center`}>
             <p className="text-2xl font-bold">{stat.count}</p>
-            <p className="text-xs font-medium opacity-70">{stat.label}</p>
+            <p className="text-xs font-medium opacity-70">{stat.icon} {stat.label}</p>
           </div>
         ))}
       </div>
 
-      {/* Filter tabs */}
+      {/* Section tabs */}
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
-        {FILTERS.map((f) => (
-          <button
-            key={f.value}
-            onClick={() => setFilter(f.value)}
-            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
-              filter === f.value
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            {f.label}
+        {([
+          { value: "plans" as Section, label: `Trip Plans (${activePlans.length})` },
+          { value: "wishlist" as Section, label: `Want to Visit (${wishlist.length})` },
+          { value: "visited" as Section, label: `Visited (${visited.length})` },
+        ]).map((tab) => (
+          <button key={tab.value} onClick={() => setSection(tab.value)}
+            className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all ${
+              section === tab.value ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+            }`}>
+            {tab.label}
           </button>
         ))}
       </div>
 
-      {/* Travel Plans Section */}
-      {plans.length > 0 && (
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">Active Plans</h2>
-          <div className="grid gap-3">
-            {plans.filter((p) => p.status !== "completed" && p.status !== "cancelled").map((plan) => (
+      {/* Trip Plans — shows itinerary cards that link to the calendar editor */}
+      {section === "plans" && (
+        <div className="space-y-3">
+          {activePlans.length === 0 ? (
+            <EmptyState icon="📋" title="No trip plans yet"
+              description="Save a country and click 'Plan Trip' to start planning, or use AI to generate an itinerary!"
+              actionLabel="Discover Destinations" actionHref="/" />
+          ) : (
+            activePlans.map((plan) => (
               <TravelPlanCard key={plan.id} plan={plan} />
-            ))}
-          </div>
+            ))
+          )}
+
+          {/* Countries in "planning" status without a plan */}
+          {planning.filter((item) => !plans.some((p) => p.bucketListItemId === item.id)).length > 0 && (
+            <div className="mt-4">
+              <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-2">Needs a plan</p>
+              {planning.filter((item) => !plans.some((p) => p.bucketListItemId === item.id)).map((item) => (
+                <div key={item.id} className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl mb-2">
+                  {item.flagUrl && <img src={item.flagUrl} alt={item.countryName} className="w-10 h-7 rounded object-cover border border-amber-200" />}
+                  <span className="text-sm font-medium text-gray-900 flex-1">{item.countryName}</span>
+                  <Link href={`/country/${item.countryCode}`}
+                    className="text-xs px-3 py-1.5 bg-amber-500 text-white rounded-lg hover:bg-amber-600">
+                    Plan Trip
+                  </Link>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Bucket List */}
-      {filtered.length === 0 ? (
-        <EmptyState
-          icon="✈️"
-          title="No destinations yet"
-          description="Start exploring and save destinations you want to visit!"
-          actionLabel="Discover Destinations"
-          actionHref="/"
-        />
-      ) : (
-        <div className="space-y-3">
-          {filtered.map((item) => (
-            <div key={item.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-4 flex items-start gap-4">
-                {/* Flag */}
+      {/* Want to Visit — simple country cards */}
+      {section === "wishlist" && (
+        <div className="space-y-2">
+          {wishlist.length === 0 ? (
+            <EmptyState icon="💛" title="No saved destinations"
+              description="Browse destinations and save the ones you want to visit!"
+              actionLabel="Discover Destinations" actionHref="/" />
+          ) : (
+            wishlist.map((item) => (
+              <div key={item.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-4">
                 {item.flagUrl && (
-                  <img
-                    src={item.flagUrl}
-                    alt={item.countryName}
-                    className="w-14 h-10 rounded-lg object-cover border border-gray-100 flex-shrink-0"
-                  />
+                  <img src={item.flagUrl} alt={item.countryName}
+                    className="w-14 h-10 rounded-lg object-cover border border-gray-100 flex-shrink-0" />
                 )}
-
-                {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Link
-                      href={`/country/${item.countryCode}`}
-                      className="font-semibold text-gray-900 hover:text-teal-600 transition-colors truncate"
-                    >
-                      {item.countryName}
-                    </Link>
-                    <StatusBadge status={item.status} />
-                  </div>
-
-                  {item.capital && (
-                    <p className="text-sm text-gray-500">{item.capital}</p>
-                  )}
-
-                  {/* Status selector */}
-                  <div className="flex gap-1.5 mt-2">
-                    {(["want_to_visit", "planning", "visited"] as const).map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => handleStatusChange(item, s)}
-                        className={`text-xs px-2.5 py-1 rounded-full transition-all ${
-                          item.status === s
-                            ? s === "want_to_visit"
-                              ? "bg-teal-500 text-white"
-                              : s === "planning"
-                              ? "bg-amber-500 text-white"
-                              : "bg-blue-500 text-white"
-                            : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                        }`}
-                      >
-                        {s === "want_to_visit" ? "Want to Visit" : s === "planning" ? "Planning" : "Visited"}
-                      </button>
-                    ))}
-                  </div>
-
+                  <Link href={`/country/${item.countryCode}`}
+                    className="font-semibold text-gray-900 hover:text-teal-600 transition-colors">
+                    {item.countryName}
+                  </Link>
+                  {item.capital && <p className="text-xs text-gray-500">{item.capital}</p>}
                   {/* Notes */}
-                  <div className="mt-3">
-                    {editingNotes === item.id ? (
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={notesText}
-                          onChange={(e) => setNotesText(e.target.value)}
-                          className="flex-1 text-sm px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                          placeholder="Add notes..."
-                          autoFocus
-                        />
-                        <button
-                          onClick={() => handleSaveNotes(item.id)}
-                          className="text-xs px-3 py-1.5 bg-teal-500 text-white rounded-lg hover:bg-teal-600"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => setEditingNotes(null)}
-                          className="text-xs px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => { setEditingNotes(item.id); setNotesText(item.notes || ""); }}
-                        className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
-                      >
-                        {item.notes || "Add notes..."}
-                      </button>
-                    )}
-                  </div>
+                  {editingNotes === item.id ? (
+                    <div className="flex gap-2 mt-2">
+                      <input type="text" value={notesText} onChange={(e) => setNotesText(e.target.value)}
+                        className="flex-1 text-sm px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        placeholder="Add notes..." autoFocus />
+                      <button onClick={() => handleSaveNotes(item.id)} className="text-xs px-3 py-1.5 bg-teal-500 text-white rounded-lg">Save</button>
+                      <button onClick={() => setEditingNotes(null)} className="text-xs px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg">Cancel</button>
+                    </div>
+                  ) : item.notes ? (
+                    <p className="text-xs text-gray-400 mt-1 cursor-pointer hover:text-gray-600"
+                      onClick={() => { setEditingNotes(item.id); setNotesText(item.notes || ""); }}>
+                      {item.notes}
+                    </p>
+                  ) : null}
                 </div>
-
-                {/* Actions */}
-                <div className="flex flex-col gap-2 flex-shrink-0">
-                  {!plans.some((p) => p.bucketListItemId === item.id) && (
-                    <button
-                      onClick={() => handleCreatePlan(item)}
-                      className="text-xs px-3 py-1.5 bg-teal-50 text-teal-700 rounded-lg hover:bg-teal-100 transition-colors whitespace-nowrap"
-                    >
-                      Plan Trip
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleRemove(item.id)}
-                    className="text-xs px-3 py-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors"
-                  >
+                <div className="flex gap-2 flex-shrink-0">
+                  <button onClick={() => handleCreatePlan(item)}
+                    className="text-xs px-3 py-1.5 bg-teal-50 text-teal-700 rounded-lg hover:bg-teal-100">
+                    Plan Trip
+                  </button>
+                  <button onClick={() => handleRemove(item.id)}
+                    className="text-xs px-3 py-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100">
                     Remove
                   </button>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Visited — simple country cards */}
+      {section === "visited" && (
+        <div className="space-y-2">
+          {visited.length === 0 ? (
+            <EmptyState icon="✅" title="No visited countries yet"
+              description="Mark countries as visited once you've been there!" />
+          ) : (
+            visited.map((item) => (
+              <div key={item.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-4">
+                {item.flagUrl && (
+                  <img src={item.flagUrl} alt={item.countryName}
+                    className="w-14 h-10 rounded-lg object-cover border border-gray-100 flex-shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <Link href={`/country/${item.countryCode}`}
+                    className="font-semibold text-gray-900 hover:text-teal-600 transition-colors">
+                    {item.countryName}
+                  </Link>
+                  {item.capital && <p className="text-xs text-gray-500">{item.capital}</p>}
+                </div>
+                <span className="text-xs px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full font-medium">Visited</span>
+              </div>
+            ))
+          )}
         </div>
       )}
     </div>
