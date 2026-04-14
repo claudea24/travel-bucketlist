@@ -82,6 +82,8 @@ All contexts use optimistic updates with Supabase persistence and rollback on er
 | Route | Purpose |
 |---|---|
 | `/api/weather` | Proxies Open-Meteo API for weather data (cached 1hr) |
+| `/api/activities` | Fetches things-to-do from Wikivoyage + Wikipedia images (cached 24hr) |
+| `/api/plan-trip` | AI trip planner — calls OpenAI to generate day-by-day itinerary |
 
 ## External APIs
 
@@ -90,6 +92,27 @@ All contexts use optimistic updates with Supabase persistence and rollback on er
 | RestCountries | Country metadata | No |
 | Open-Meteo | Weather/forecast | No |
 | Pexels | Destination photos (seeded into DB) | Yes (PEXELS_API_KEY, server-only) |
+| Wikivoyage | Travel guides — See/Do/Eat/Drink/Buy sections | No |
+| Wikipedia | Thumbnail images for activities/places | No |
+| OpenAI | AI trip planner (gpt-4o-mini) | Yes (OPENAI_API_KEY, server-only) |
+
+## Country Detail Page Features
+
+Each country page (`/country/[code]`) includes:
+- **Save button** (Airbnb-style heart) — saves to bucket list as "want_to_visit"
+- **Plan My Trip button** — opens AI trip planner, sets status to "planning"
+- **Quick links** — direct links to Airbnb, Google Hotels, Google Flights for the country
+- **Things to Do** — auto-fetched from Wikivoyage with Wikipedia images
+  - Category filters (See, Do, Eat, Drink, Shop, Culture)
+  - YouTube search link per activity
+  - Google Photos + Google search links
+  - Heart to save individual activities (passed to AI planner)
+- **AI Trip Planner** — powered by OpenAI (gpt-4o-mini)
+  - Select trip duration (3-14 days)
+  - Builds itinerary from your saved activities + interests
+  - Day-by-day schedule with times, costs, categories
+  - Hotel/Airbnb area recommendations with booking links
+  - Budget breakdown + practical travel tips
 
 ## Environment Variables (`.env.local`)
 ```
@@ -101,6 +124,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://pssuuarfwhhepnxaieud.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 PEXELS_API_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
+OPENAI_API_KEY=sk-...
 ```
 
 ## Supabase MCP
@@ -120,7 +144,10 @@ src/
 │   ├── layout.tsx                    # Root layout (ClerkProvider + Navbar)
 │   ├── page.tsx                      # Discover feed (Home)
 │   ├── globals.css                   # Tailwind + theme
-│   ├── api/weather/route.ts          # Open-Meteo proxy
+│   ├── api/
+│   │   ├── weather/route.ts          # Open-Meteo proxy
+│   │   ├── activities/route.ts       # Wikivoyage + Wikipedia images
+│   │   └── plan-trip/route.ts        # OpenAI trip planner
 │   ├── bucket-list/page.tsx          # Redirect to /personal
 │   ├── personal/
 │   │   ├── page.tsx                  # My Trips dashboard
@@ -143,7 +170,9 @@ src/
 │   │   ├── CategoryPill.tsx
 │   │   ├── SaveButton.tsx
 │   │   ├── StatusBadge.tsx
-│   │   └── UserAvatar.tsx
+│   │   ├── UserAvatar.tsx
+│   │   ├── ActivitySection.tsx       # Wikivoyage activities with photos + YouTube
+│   │   └── AiTripPlanner.tsx         # OpenAI-powered itinerary generator
 │   ├── home/                         # Discover page components
 │   │   ├── HomeFeed.tsx
 │   │   ├── DestinationCard.tsx
