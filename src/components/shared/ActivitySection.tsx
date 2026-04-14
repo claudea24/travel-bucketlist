@@ -233,28 +233,11 @@ export default function ActivitySection({ countryName, countryCode, onSelectActi
               {/* Content */}
               <div className="p-3.5">
                 {activity.description && (
-                  <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed mb-3">{activity.description}</p>
+                  <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed mb-2">{activity.description}</p>
                 )}
-                <div className="flex items-center gap-2">
-                  <a href={activity.youtubeSearchUrl} target="_blank" rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M23.5 6.19a3.02 3.02 0 0 0-2.12-2.14C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.38.55A3.02 3.02 0 0 0 .5 6.19 31.6 31.6 0 0 0 0 12a31.6 31.6 0 0 0 .5 5.81 3.02 3.02 0 0 0 2.12 2.14c1.88.55 9.38.55 9.38.55s7.5 0 9.38-.55a3.02 3.02 0 0 0 2.12-2.14A31.6 31.6 0 0 0 24 12a31.6 31.6 0 0 0-.5-5.81zM9.75 15.02V8.98L15.5 12l-5.75 3.02z" />
-                    </svg>
-                    YouTube
-                  </a>
-                  <a href={`https://www.google.com/search?q=${encodeURIComponent(activity.name + " " + countryName)}&tbm=isch`}
-                    target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors">
-                    📷 Photos
-                  </a>
-                  <a href={`https://www.google.com/search?q=${encodeURIComponent(activity.name + " " + countryName + " travel guide")}`}
-                    target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-100 transition-colors">
-                    🔍 More
-                  </a>
-                </div>
+                <span className="text-xs text-teal-600 font-medium">
+                  Tap to see photos, videos & tips →
+                </span>
               </div>
             </div>
           );
