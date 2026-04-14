@@ -140,55 +140,80 @@ export default function PersonalDashboard() {
       )}
 
       {/* Visited — simple country cards */}
-      {section === "visited" && (
-        <div className="space-y-3">
-          {visited.length === 0 && completedPlans.length === 0 ? (
-            <EmptyState icon="✅" title="No visited countries yet"
-              description="Complete a trip to see it here as an archive!" />
-          ) : (
-            <>
-              {/* Completed trip plans with itinerary links */}
-              {completedPlans.map((cp) => (
-                <Link key={cp.id} href={`/personal/plan/${cp.id}`} className="block">
-                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md hover:border-blue-200 transition-all">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-blue-100 text-blue-700 rounded-xl flex items-center justify-center text-lg">🎉</div>
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-gray-900 text-sm">{cp.title}</h4>
-                        <p className="text-xs text-gray-500">{cp.countryName}
-                          {cp.startDate && cp.endDate && ` · ${new Date(cp.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${new Date(cp.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full font-medium">Completed</span>
-                        <span className="text-sm text-teal-600">View →</span>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
+      {section === "visited" && (() => {
+        // Group by country
+        const visitedCountries: Record<string, { name: string; flagUrl: string; bucketItem: typeof visited[0] | null; trips: typeof completedPlans }> = {};
 
-              {/* Countries visited without a plan */}
-              {visited.filter((item) => !completedPlans.some((cp) => cp.countryCode === item.countryCode)).map((item) => (
-                <div key={item.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-4">
-                  {item.flagUrl && (
-                    <img src={item.flagUrl} alt={item.countryName}
-                      className="w-14 h-10 rounded-lg object-cover border border-gray-100 flex-shrink-0" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <Link href={`/country/${item.countryCode}`}
-                      className="font-semibold text-gray-900 hover:text-teal-600 transition-colors">
-                      {item.countryName}
-                    </Link>
-                    {item.capital && <p className="text-xs text-gray-500">{item.capital}</p>}
+        // Add countries from completed plans
+        completedPlans.forEach((cp) => {
+          if (!visitedCountries[cp.countryCode]) {
+            const bi = visited.find((v) => v.countryCode === cp.countryCode);
+            visitedCountries[cp.countryCode] = { name: cp.countryName, flagUrl: bi?.flagUrl || "", bucketItem: bi || null, trips: [] };
+          }
+          visitedCountries[cp.countryCode].trips.push(cp);
+        });
+
+        // Add countries from bucket list that don't have plans
+        visited.forEach((v) => {
+          if (!visitedCountries[v.countryCode]) {
+            visitedCountries[v.countryCode] = { name: v.countryName, flagUrl: v.flagUrl, bucketItem: v, trips: [] };
+          }
+        });
+
+        const countries = Object.entries(visitedCountries);
+
+        return (
+          <div className="space-y-4">
+            {countries.length === 0 ? (
+              <EmptyState icon="✅" title="No visited countries yet"
+                description="Complete a trip to see it here as an archive!" />
+            ) : (
+              countries.map(([code, country]) => (
+                <div key={code} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  {/* Country header */}
+                  <div className="p-4 flex items-center gap-4 border-b border-gray-50">
+                    {country.flagUrl && (
+                      <img src={country.flagUrl} alt={country.name}
+                        className="w-14 h-10 rounded-lg object-cover border border-gray-100 flex-shrink-0" />
+                    )}
+                    <div className="flex-1">
+                      <Link href={`/country/${code}`} className="font-semibold text-gray-900 hover:text-teal-600 transition-colors">
+                        {country.name}
+                      </Link>
+                      <p className="text-xs text-gray-400">
+                        {country.trips.length} {country.trips.length === 1 ? "trip" : "trips"} completed
+                      </p>
+                    </div>
+                    <span className="text-xs px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full font-medium">✅ Visited</span>
                   </div>
-                  <span className="text-xs px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full font-medium">Visited</span>
+
+                  {/* Trips for this country */}
+                  {country.trips.length > 0 && (
+                    <div className="divide-y divide-gray-50">
+                      {country.trips.map((trip) => (
+                        <Link key={trip.id} href={`/personal/plan/${trip.id}`} className="block">
+                          <div className="px-4 py-3 flex items-center gap-3 hover:bg-teal-50/50 transition-colors">
+                            <span className="text-lg">🎉</span>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-700">{trip.title}</p>
+                              {trip.startDate && trip.endDate && (
+                                <p className="text-xs text-gray-400">
+                                  {new Date(trip.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })} – {new Date(trip.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                                </p>
+                              )}
+                            </div>
+                            <span className="text-xs text-teal-600">View itinerary →</span>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ))}
-            </>
-          )}
-        </div>
-      )}
+              ))
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
