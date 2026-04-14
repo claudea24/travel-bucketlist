@@ -12,7 +12,7 @@ type Section = "plans" | "wishlist" | "visited";
 
 export default function PersonalDashboard() {
   const { items, isLoading, dispatch } = useBucketList();
-  const { plans, dispatch: planDispatch } = useTravelPlans();
+  const { plans, isLoading: plansLoading, dispatch: planDispatch } = useTravelPlans();
   const [section, setSection] = useState<Section>("plans");
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
   const [notesText, setNotesText] = useState("");
@@ -30,7 +30,7 @@ export default function PersonalDashboard() {
   };
 
 
-  if (isLoading) return <LoadingSpinner message="Loading your trips..." />;
+  if (isLoading || plansLoading) return <LoadingSpinner message="Loading your trips..." />;
 
   return (
     <div className="space-y-6">
