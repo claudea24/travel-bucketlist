@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { countryCode, countryName, startDate, endDate, title } = await request.json();
+  const { countryCode, countryName, startDate, endDate, title, days } = await request.json();
   if (!countryCode || !countryName) {
     return NextResponse.json({ error: "countryCode and countryName required" }, { status: 400 });
   }
@@ -40,5 +40,30 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ planId });
+  // Calculate number of days and create placeholder items for each day
+  let numDays = days || 3;
+  if (startDate && endDate) {
+    numDays = Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000) + 1;
+  }
+  numDays = Math.max(1, Math.min(numDays, 30));
+
+  const placeholderItems = [];
+  for (let d = 1; d <= numDays; d++) {
+    placeholderItems.push({
+      id: crypto.randomUUID(),
+      travel_plan_id: planId,
+      user_id: userId,
+      day_number: d,
+      title: "Free time — add your activities!",
+      category: "activity",
+      start_time: "09:00:00",
+      sort_order: 0,
+    });
+  }
+
+  if (placeholderItems.length > 0) {
+    await client.from("itinerary_items").insert(placeholderItems);
+  }
+
+  return NextResponse.json({ planId, days: numDays });
 }

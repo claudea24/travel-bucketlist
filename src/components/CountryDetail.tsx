@@ -3,9 +3,11 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSession } from "@clerk/nextjs";
 import { Country } from "@/lib/types";
 import { getCountryByCode } from "@/lib/countries";
 import { useBucketList } from "@/context/BucketListContext";
+import { createClerkSupabaseClient } from "@/lib/supabase";
 import StatusBadge from "@/components/shared/StatusBadge";
 import LoadingSpinner from "@/components/shared/LoadingSpinner";
 import ActivitySection from "@/components/shared/ActivitySection";
@@ -16,6 +18,7 @@ interface CountryDetailProps {
 
 export default function CountryDetail({ code }: CountryDetailProps) {
   const router = useRouter();
+  const { session } = useSession();
   const [country, setCountry] = useState<Country | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
@@ -23,7 +26,18 @@ export default function CountryDetail({ code }: CountryDetailProps) {
   const [manualStartDate, setManualStartDate] = useState("");
   const [manualEndDate, setManualEndDate] = useState("");
   const [creatingPlan, setCreatingPlan] = useState(false);
+  const [existingPlanId, setExistingPlanId] = useState<string | null>(null);
   const { items, dispatch } = useBucketList();
+
+  // Check if a plan already exists for this country
+  useEffect(() => {
+    if (!session) return;
+    const client = createClerkSupabaseClient(() => session.getToken({ template: "supabase" }));
+    client.from("travel_plans").select("id").eq("country_code", code).limit(1)
+      .then(({ data }) => {
+        if (data && data.length > 0) setExistingPlanId(data[0].id as string);
+      });
+  }, [session, code]);
 
   const saved = items.find((i) => i.countryCode === code);
 
@@ -105,6 +119,9 @@ export default function CountryDetail({ code }: CountryDetailProps) {
           startDate: manualStartDate || null,
           endDate: manualEndDate || null,
           title: `Trip to ${country.name.common}`,
+          days: manualStartDate && manualEndDate
+            ? Math.ceil((new Date(manualEndDate).getTime() - new Date(manualStartDate).getTime()) / 86400000) + 1
+            : 3,
         }),
       });
       const data = await token.json();
@@ -182,12 +199,19 @@ export default function CountryDetail({ code }: CountryDetailProps) {
               {saved ? "Saved" : "Save"}
             </button>
 
+            {existingPlanId && (
+              <Link href={`/personal/plan/${existingPlanId}`}
+                className="flex items-center gap-2 px-5 py-2.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-sm font-medium hover:bg-amber-100 transition-all">
+                📋 View My Trip
+              </Link>
+            )}
+
             <div className="relative">
               <button
                 onClick={() => setShowPlanOptions(!showPlanOptions)}
                 className="flex items-center gap-2 px-5 py-2.5 bg-teal-500 text-white rounded-xl text-sm font-medium hover:bg-teal-600 shadow-sm transition-all"
               >
-                ✈️ Plan My Trip
+                ✈️ {existingPlanId ? "New Trip" : "Plan My Trip"}
               </button>
 
               {showPlanOptions && (
