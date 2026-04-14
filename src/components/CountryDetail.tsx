@@ -19,6 +19,10 @@ export default function CountryDetail({ code }: CountryDetailProps) {
   const [country, setCountry] = useState<Country | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
+  const [showPlanOptions, setShowPlanOptions] = useState(false);
+  const [manualStartDate, setManualStartDate] = useState("");
+  const [manualEndDate, setManualEndDate] = useState("");
+  const [creatingPlan, setCreatingPlan] = useState(false);
   const { items, dispatch } = useBucketList();
 
   const saved = items.find((i) => i.countryCode === code);
@@ -60,35 +64,57 @@ export default function CountryDetail({ code }: CountryDetailProps) {
     }
   };
 
-  const handlePlanTrip = () => {
+  const saveToBucketListAsPlanning = () => {
     if (!country) return;
-    // Save to bucket list with "planning" status if not already saved
     if (!saved) {
       dispatch({
         type: "ADD_ITEM",
         payload: {
-          id: crypto.randomUUID(),
-          countryCode: country.cca3,
-          countryName: country.name.common,
-          capital: country.capital?.[0] || "",
-          region: country.region || "",
-          subregion: country.subregion || "",
-          flagUrl: country.flags?.svg || country.flags?.png || "",
-          population: country.population || 0,
-          status: "planning",
-          notes: "",
+          id: crypto.randomUUID(), countryCode: country.cca3, countryName: country.name.common,
+          capital: country.capital?.[0] || "", region: country.region || "",
+          subregion: country.subregion || "", flagUrl: country.flags?.svg || country.flags?.png || "",
+          population: country.population || 0, status: "planning", notes: "",
         },
       });
     } else if (saved.status === "want_to_visit") {
       dispatch({ type: "UPDATE_ITEM", payload: { id: saved.id, status: "planning" } });
     }
-    // Store selected activities for the planner
+  };
+
+  const handlePlanWithAI = () => {
+    if (!country) return;
+    saveToBucketListAsPlanning();
     localStorage.setItem(`plan_setup_${country.cca3}`, JSON.stringify({
-      countryName: country.name.common,
-      countryCode: country.cca3,
-      selectedActivities,
+      countryName: country.name.common, countryCode: country.cca3, selectedActivities,
     }));
     router.push(`/personal/plan/new?country=${country.cca3}&name=${encodeURIComponent(country.name.common)}`);
+  };
+
+  const handlePlanManually = async () => {
+    if (!country) return;
+    setCreatingPlan(true);
+    saveToBucketListAsPlanning();
+
+    try {
+      const token = await fetch("/api/create-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          countryCode: country.cca3,
+          countryName: country.name.common,
+          startDate: manualStartDate || null,
+          endDate: manualEndDate || null,
+          title: `Trip to ${country.name.common}`,
+        }),
+      });
+      const data = await token.json();
+      if (data.planId) {
+        router.push(`/personal/plan/${data.planId}`);
+      }
+    } catch (e) {
+      console.error("Failed to create plan:", e);
+    }
+    setCreatingPlan(false);
   };
 
   const handleActivitySelect = useCallback((activities: { name: string }[]) => {
@@ -156,12 +182,63 @@ export default function CountryDetail({ code }: CountryDetailProps) {
               {saved ? "Saved" : "Save"}
             </button>
 
-            <button
-              onClick={handlePlanTrip}
-              className="flex items-center gap-2 px-5 py-2.5 bg-teal-500 text-white rounded-xl text-sm font-medium hover:bg-teal-600 shadow-sm transition-all"
-            >
-              ✈️ Plan My Trip
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowPlanOptions(!showPlanOptions)}
+                className="flex items-center gap-2 px-5 py-2.5 bg-teal-500 text-white rounded-xl text-sm font-medium hover:bg-teal-600 shadow-sm transition-all"
+              >
+                ✈️ Plan My Trip
+              </button>
+
+              {showPlanOptions && (
+                <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-2xl border border-gray-200 shadow-xl z-20 overflow-hidden">
+                  {/* AI option */}
+                  <button onClick={handlePlanWithAI}
+                    className="w-full p-4 text-left hover:bg-teal-50 transition-colors border-b border-gray-100">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">✨</span>
+                      <div>
+                        <p className="font-semibold text-gray-900 text-sm">Plan with AI</p>
+                        <p className="text-xs text-gray-500">AI generates a full itinerary based on your interests</p>
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Manual option */}
+                  <div className="p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="text-2xl">📝</span>
+                      <div>
+                        <p className="font-semibold text-gray-900 text-sm">Plan Manually</p>
+                        <p className="text-xs text-gray-500">Create an empty plan and add activities yourself</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">Start Date</label>
+                        <input type="date" value={manualStartDate} onChange={(e) => setManualStartDate(e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">End Date</label>
+                        <input type="date" value={manualEndDate} onChange={(e) => setManualEndDate(e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                      </div>
+                    </div>
+                    <button onClick={handlePlanManually} disabled={creatingPlan}
+                      className="w-full py-2.5 bg-teal-500 text-white text-sm font-medium rounded-xl hover:bg-teal-600 disabled:opacity-50 transition-colors">
+                      {creatingPlan ? "Creating..." : "Create Plan"}
+                    </button>
+                  </div>
+
+                  {/* Close */}
+                  <button onClick={() => setShowPlanOptions(false)}
+                    className="w-full py-2 text-xs text-gray-400 hover:text-gray-600 border-t border-gray-100">
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
 
             {saved && (
               <div className="flex items-center gap-2">

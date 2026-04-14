@@ -42,6 +42,8 @@ export interface TripPlan {
   countryCode: string;
   hasTransport: boolean;
   tripDays: number;
+  startDate: string;
+  endDate: string;
 }
 
 export default function NewPlanClient() {
@@ -73,6 +75,8 @@ export default function NewPlanClient() {
     interests: string;
     selectedActivities: string[];
     customActivities: string[];
+    startDate: string;
+    endDate: string;
   }) => {
     setStep("generating");
     setError("");
@@ -105,6 +109,8 @@ export default function NewPlanClient() {
         countryCode,
         hasTransport: config.hasTransport,
         tripDays: config.days,
+        startDate: config.startDate || "",
+        endDate: config.endDate || "",
         days: (data.days || []).map((day: ItineraryDay) => ({
           ...day,
           activities: (day.activities || []).map((act: ItineraryActivity) => ({

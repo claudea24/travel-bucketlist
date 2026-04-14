@@ -199,6 +199,8 @@ export default function TripCalendar({ plan, onUpdatePlan, onRegenerate }: TripC
         estimatedBudget: plan.estimatedBudget || {},
         days: plan.days,
         accommodation: plan.accommodation || [],
+        startDate: plan.startDate || null,
+        endDate: plan.endDate || null,
       });
       if (planId) {
         setSaved(true);

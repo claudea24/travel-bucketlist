@@ -12,6 +12,8 @@ interface TripSetupProps {
     interests: string;
     selectedActivities: string[];
     customActivities: string[];
+    startDate: string;
+    endDate: string;
   }) => void;
 }
 
@@ -28,6 +30,8 @@ const INTEREST_OPTIONS = [
 
 export default function TripSetup({ countryName, savedActivities, onGenerate }: TripSetupProps) {
   const [days, setDays] = useState(5);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [hasTransport, setHasTransport] = useState(false);
   const [selectedInterests, setSelectedInterests] = useState<Set<string>>(new Set(["sightseeing", "food", "culture"]));
   const [selectedActivities, setSelectedActivities] = useState<Set<string>>(new Set(savedActivities));
@@ -70,6 +74,8 @@ export default function TripSetup({ countryName, savedActivities, onGenerate }: 
       interests: [...selectedInterests].join(", "),
       selectedActivities: [...selectedActivities],
       customActivities,
+      startDate,
+      endDate,
     });
   };
 
@@ -90,6 +96,24 @@ export default function TripSetup({ countryName, savedActivities, onGenerate }: 
               {d} {d === 1 ? "day" : "days"}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Dates */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <h3 className="font-semibold text-gray-900 mb-1">When are you going?</h3>
+        <p className="text-sm text-gray-500 mb-4">Optional — you can set dates later</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Start Date</label>
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">End Date</label>
+            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent" />
+          </div>
         </div>
       </div>
 

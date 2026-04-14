@@ -23,6 +23,8 @@ interface TravelPlanContextType {
     estimatedBudget: Record<string, string>;
     days: { day: number; title: string; activities: { id: string; time: string; title: string; description: string; category: string; estimatedCost: string }[] }[];
     accommodation: { area: string; description: string; budgetRange: string; searchUrl: string }[];
+    startDate?: string | null;
+    endDate?: string | null;
   }) => Promise<string | null>;
 }
 
@@ -107,6 +109,8 @@ export function TravelPlanProvider({ children }: { children: ReactNode }) {
     estimatedBudget: Record<string, string>;
     days: { day: number; title: string; activities: { id: string; time: string; title: string; description: string; category: string; estimatedCost: string }[] }[];
     accommodation: { area: string; description: string; budgetRange: string; searchUrl: string }[];
+    startDate?: string | null;
+    endDate?: string | null;
   }): Promise<string | null> => {
     const userId = user?.id;
     if (!userId) return null;
@@ -123,6 +127,8 @@ export function TravelPlanProvider({ children }: { children: ReactNode }) {
       summary: aiPlan.summary,
       tips: aiPlan.tips || [],
       status: "planning",
+      start_date: aiPlan.startDate || null,
+      end_date: aiPlan.endDate || null,
       notes: aiPlan.estimatedBudget ? JSON.stringify(aiPlan.estimatedBudget) : null,
     };
 
@@ -191,8 +197,8 @@ export function TravelPlanProvider({ children }: { children: ReactNode }) {
       title: aiPlan.title,
       summary: aiPlan.summary,
       tips: aiPlan.tips || [],
-      startDate: null,
-      endDate: null,
+      startDate: aiPlan.startDate || null,
+      endDate: aiPlan.endDate || null,
       budgetAmount: null,
       budgetCurrency: "USD",
       status: "planning",
