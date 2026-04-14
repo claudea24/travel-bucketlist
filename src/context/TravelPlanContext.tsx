@@ -34,8 +34,7 @@ export function TravelPlanProvider({ children }: { children: ReactNode }) {
   const [plans, setPlans] = useState<TravelPlan[]>([]);
   const [itineraryItems, setItineraryItems] = useState<Record<string, ItineraryItem[]>>({});
   const [accommodations, setAccommodations] = useState<Record<string, PlanAccommodation[]>>({});
-  const [isLoading, setIsLoading] = useState(false);
-  const hasFetched = useRef(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const getToken = useCallback(
     () => session?.getToken({ template: "supabase" }) ?? Promise.resolve(null),
@@ -45,8 +44,7 @@ export function TravelPlanProvider({ children }: { children: ReactNode }) {
   useEffect(() => { clientRef.current = createClerkSupabaseClient(getToken); }, [getToken]);
 
   useEffect(() => {
-    if (!session || !user || hasFetched.current) return;
-    hasFetched.current = true;
+    if (!session || !user) { setIsLoading(false); return; }
 
     let cancelled = false;
     async function fetchPlans() {
