@@ -83,6 +83,8 @@ All contexts use optimistic updates with Supabase persistence and rollback on er
 |---|---|
 | `/api/weather` | Proxies Open-Meteo API for weather data (cached 1hr) |
 | `/api/activities` | AI-generated activities (OpenAI) with Wikipedia images, Wikivoyage fallback |
+| `/api/activity-detail` | AI-generated detail for a single activity (what to expect, tips, cost, duration) |
+| `/api/wiki-image` | Fetches Wikipedia thumbnail for a place name (cached 7 days) |
 | `/api/plan-trip` | AI trip planner — generates + refines itinerary via conversational edits |
 
 ## External APIs
@@ -185,7 +187,8 @@ src/
 │   │   ├── SaveButton.tsx
 │   │   ├── StatusBadge.tsx
 │   │   ├── UserAvatar.tsx
-│   │   ├── ActivitySection.tsx       # Wikivoyage activities with photos + YouTube
+│   │   ├── ActivitySection.tsx       # Activity cards with lazy images + YouTube
+│   │   ├── ActivityModal.tsx         # Expandable detail modal (tips, videos, links)
 │   │   └── AiTripPlanner.tsx         # OpenAI-powered itinerary generator
 │   ├── home/                         # Discover page components
 │   │   ├── HomeFeed.tsx

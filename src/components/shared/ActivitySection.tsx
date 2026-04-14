@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import LoadingSpinner from "./LoadingSpinner";
+import ActivityModal from "./ActivityModal";
 
 interface Activity {
   name: string;
@@ -25,8 +26,9 @@ const categoryConfig: Record<string, { emoji: string; label: string; color: stri
 };
 
 // Lazy-loading image component that fetches from Wikipedia API
-function LazyWikiImage({ name, countryName, fallbackGradient, fallbackEmoji }: {
+function LazyWikiImage({ name, countryName, fallbackGradient, fallbackEmoji, onImageLoad }: {
   name: string; countryName: string; fallbackGradient: string; fallbackEmoji: string;
+  onImageLoad?: (url: string) => void;
 }) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -35,7 +37,13 @@ function LazyWikiImage({ name, countryName, fallbackGradient, fallbackEmoji }: {
     // Check image cache
     const cacheKey = `img_${name}`;
     const cached = sessionStorage.getItem(cacheKey);
-    if (cached) { setImageUrl(cached === "null" ? null : cached); setLoaded(true); return; }
+    if (cached) {
+      const url = cached === "null" ? null : cached;
+      setImageUrl(url);
+      setLoaded(true);
+      if (url && onImageLoad) onImageLoad(url);
+      return;
+    }
 
     fetch(`/api/wiki-image?q=${encodeURIComponent(name)}`)
       .then((r) => r.json())
@@ -44,7 +52,7 @@ function LazyWikiImage({ name, countryName, fallbackGradient, fallbackEmoji }: {
         setImageUrl(url);
         setLoaded(true);
         sessionStorage.setItem(cacheKey, url || "null");
-        // If no image, try with country name
+        if (url && onImageLoad) onImageLoad(url);
         if (!url) {
           fetch(`/api/wiki-image?q=${encodeURIComponent(name + " " + countryName)}`)
             .then((r) => r.json())
@@ -52,6 +60,7 @@ function LazyWikiImage({ name, countryName, fallbackGradient, fallbackEmoji }: {
               if (d2.imageUrl) {
                 setImageUrl(d2.imageUrl);
                 sessionStorage.setItem(cacheKey, d2.imageUrl);
+                if (onImageLoad) onImageLoad(d2.imageUrl);
               }
             }).catch(() => {});
         }
@@ -86,6 +95,8 @@ export default function ActivitySection({ countryName, countryCode, onSelectActi
   const [error, setError] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [savedActivities, setSavedActivities] = useState<Set<string>>(new Set());
+  const [openActivity, setOpenActivity] = useState<Activity | null>(null);
+  const [activityImages, setActivityImages] = useState<Record<string, string | null>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -190,7 +201,8 @@ export default function ActivitySection({ countryName, countryCode, onSelectActi
           const isSaved = savedActivities.has(activity.name);
 
           return (
-            <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-all group">
+            <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-all group cursor-pointer"
+              onClick={() => setOpenActivity(activity)}>
               {/* Image — lazy loaded */}
               <div className="relative h-36 overflow-hidden">
                 <LazyWikiImage
@@ -198,6 +210,7 @@ export default function ActivitySection({ countryName, countryCode, onSelectActi
                   countryName={countryName}
                   fallbackGradient={config.gradient}
                   fallbackEmoji={config.emoji}
+                  onImageLoad={(url) => setActivityImages((prev) => ({ ...prev, [activity.name]: url }))}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
 
@@ -251,6 +264,19 @@ export default function ActivitySection({ countryName, countryCode, onSelectActi
       <p className="text-xs text-gray-300 mt-4 text-center">
         Suggestions powered by AI &middot; Images from Wikipedia
       </p>
+
+      {/* Activity detail modal */}
+      {openActivity && (
+        <ActivityModal
+          name={openActivity.name}
+          description={openActivity.description}
+          category={openActivity.category}
+          imageUrl={activityImages[openActivity.name] || null}
+          youtubeSearchUrl={openActivity.youtubeSearchUrl}
+          countryName={countryName}
+          onClose={() => setOpenActivity(null)}
+        />
+      )}
     </div>
   );
 }
