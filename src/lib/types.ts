@@ -140,6 +140,35 @@ export interface PlanAccommodation {
   createdAt: string;
 }
 
+// Transport booking (flight, car rental, etc.)
+export interface PlanTransport {
+  id: string;
+  travelPlanId: string;
+  userId: string;
+  transportType: "flight" | "car" | "train" | "bus" | "ferry" | "other";
+  title: string;
+  confirmationNumber: string | null;
+  bookingUrl: string | null;
+  provider: string | null;
+  pickupDate: string | null;
+  dropoffDate: string | null;
+  notes: string | null;
+  isBooked: boolean;
+  sortOrder: number;
+  createdAt: string;
+}
+
+// Post-trip notes and photos
+export interface TripNote {
+  id: string;
+  travelPlanId: string;
+  userId: string;
+  content: string | null;
+  photoUrl: string | null;
+  noteType: "note" | "photo" | "highlight";
+  createdAt: string;
+}
+
 // Day-by-day item within a travel plan
 export interface ItineraryItem {
   id: string;

@@ -4,9 +4,9 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSession, useUser } from "@clerk/nextjs";
 import Link from "next/link";
-import { TravelPlan, ItineraryItem, PlanAccommodation } from "@/lib/types";
+import { TravelPlan } from "@/lib/types";
 import { createClerkSupabaseClient } from "@/lib/supabase";
-import { planFromRow, itineraryItemFromRow, accommodationFromRow } from "@/lib/mappers/travelPlan";
+import { planFromRow } from "@/lib/mappers/travelPlan";
 import { TravelPlanProvider, useTravelPlans } from "@/context/TravelPlanContext";
 import { useBucketList } from "@/context/BucketListContext";
 import SavedPlanEditor from "@/components/personal/SavedPlanEditor";
@@ -16,7 +16,7 @@ function PlanLoader({ planId }: { planId: string }) {
   const router = useRouter();
   const { session } = useSession();
   const { user } = useUser();
-  const { dispatch, itineraryItems, accommodations, plans: allPlans } = useTravelPlans();
+  const { dispatch, itineraryItems, accommodations, transports, tripNotes, plans: allPlans, fetchItinerary, fetchAccommodations, fetchTransports, fetchTripNotes } = useTravelPlans();
   const { items: bucketItems, dispatch: bucketDispatch } = useBucketList();
   const [plan, setPlan] = useState<TravelPlan | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,19 +45,15 @@ function PlanLoader({ planId }: { planId: string }) {
       const loadedPlan = planFromRow(planData as Record<string, unknown>);
       setPlan(loadedPlan);
 
-      const [itemsRes, accomsRes] = await Promise.all([
-        client.from("itinerary_items").select("*").eq("travel_plan_id", planId).order("day_number").order("sort_order"),
-        client.from("plan_accommodations").select("*").eq("travel_plan_id", planId).order("sort_order"),
+      // Fetch all related data in parallel
+      await Promise.all([
+        fetchItinerary(planId),
+        fetchAccommodations(planId),
+        fetchTransports(planId),
+        fetchTripNotes(planId),
       ]);
 
-      if (!cancelled) {
-        const loadedItems = (itemsRes.data || []).map((r) => itineraryItemFromRow(r as Record<string, unknown>));
-        const loadedAccoms = (accomsRes.data || []).map((r) => accommodationFromRow(r as Record<string, unknown>));
-        // Seed context so dispatch works
-        dispatch({ type: "SET_ITINERARY", payload: { planId, items: loadedItems } });
-        dispatch({ type: "SET_ACCOMMODATIONS", payload: { planId, items: loadedAccoms } });
-        setLoading(false);
-      }
+      if (!cancelled) setLoading(false);
     }
 
     loadPlan();
@@ -67,6 +63,8 @@ function PlanLoader({ planId }: { planId: string }) {
   // Listen to context for live updates
   const items = itineraryItems[planId] || [];
   const accoms = accommodations[planId] || [];
+  const trans = transports[planId] || [];
+  const notes = tripNotes[planId] || [];
 
   if (loading) return <LoadingSpinner message="Loading your trip..." />;
   if (error || !plan) {
@@ -79,7 +77,7 @@ function PlanLoader({ planId }: { planId: string }) {
   }
 
   return (
-    <SavedPlanEditor plan={plan} items={items} accoms={accoms}
+    <SavedPlanEditor plan={plan} items={items} accoms={accoms} transports={trans} notes={notes}
       onDelete={() => {
         dispatch({ type: "DELETE_PLAN", payload: { id: plan.id } });
         const otherPlans = allPlans.filter((p) => p.countryCode === plan.countryCode && p.id !== plan.id);

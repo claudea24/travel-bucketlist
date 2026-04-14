@@ -2,18 +2,27 @@
 
 import { createContext, useContext, useCallback, useEffect, useState, ReactNode, useMemo, useRef } from "react";
 import { useSession, useUser } from "@clerk/nextjs";
-import { TravelPlan, ItineraryItem, PlanAccommodation, TravelPlanAction } from "@/lib/types";
+import { TravelPlan, ItineraryItem, PlanAccommodation, PlanTransport, TripNote, TravelPlanAction } from "@/lib/types";
 import { createClerkSupabaseClient } from "@/lib/supabase";
 import { planFromRow, planToRow, itineraryItemFromRow, itineraryItemToRow, accommodationFromRow, accommodationToRow } from "@/lib/mappers/travelPlan";
 
 interface TravelPlanContextType {
   plans: TravelPlan[];
   itineraryItems: Record<string, ItineraryItem[]>;
+  transports: Record<string, PlanTransport[]>;
+  tripNotes: Record<string, TripNote[]>;
   accommodations: Record<string, PlanAccommodation[]>;
   isLoading: boolean;
   dispatch: (action: TravelPlanAction) => void;
   fetchItinerary: (planId: string) => Promise<void>;
   fetchAccommodations: (planId: string) => Promise<void>;
+  fetchTransports: (planId: string) => Promise<void>;
+  fetchTripNotes: (planId: string) => Promise<void>;
+  addTransport: (t: PlanTransport) => void;
+  updateTransport: (id: string, updates: Partial<PlanTransport>) => void;
+  deleteTransport: (id: string, planId: string) => void;
+  addTripNote: (n: TripNote) => void;
+  deleteTripNote: (id: string, planId: string) => void;
   saveAiPlan: (plan: {
     countryCode: string;
     countryName: string;
@@ -36,6 +45,8 @@ export function TravelPlanProvider({ children }: { children: ReactNode }) {
   const [plans, setPlans] = useState<TravelPlan[]>([]);
   const [itineraryItems, setItineraryItems] = useState<Record<string, ItineraryItem[]>>({});
   const [accommodations, setAccommodations] = useState<Record<string, PlanAccommodation[]>>({});
+  const [transports, setTransports] = useState<Record<string, PlanTransport[]>>({});
+  const [tripNotes, setTripNotes] = useState<Record<string, TripNote[]>>({});
   const [isLoading, setIsLoading] = useState(true);
 
   const getToken = useCallback(
@@ -97,6 +108,83 @@ export function TravelPlanProvider({ children }: { children: ReactNode }) {
         [planId]: data.map((r) => accommodationFromRow(r as Record<string, unknown>)),
       }));
     }
+  }, []);
+
+  const fetchTransports = useCallback(async (planId: string) => {
+    const client = clientRef.current;
+    const { data } = await client.from("plan_transport").select("*").eq("travel_plan_id", planId).order("sort_order");
+    if (data) {
+      const mapped = data.map((r: Record<string, unknown>): PlanTransport => ({
+        id: r.id as string, travelPlanId: r.travel_plan_id as string, userId: r.user_id as string,
+        transportType: r.transport_type as PlanTransport["transportType"], title: r.title as string,
+        confirmationNumber: (r.confirmation_number as string) || null, bookingUrl: (r.booking_url as string) || null,
+        provider: (r.provider as string) || null, pickupDate: (r.pickup_date as string) || null,
+        dropoffDate: (r.dropoff_date as string) || null, notes: (r.notes as string) || null,
+        isBooked: (r.is_booked as boolean) || false, sortOrder: (r.sort_order as number) || 0,
+        createdAt: r.created_at as string,
+      }));
+      setTransports((prev) => ({ ...prev, [planId]: mapped }));
+    }
+  }, []);
+
+  const fetchTripNotes = useCallback(async (planId: string) => {
+    const client = clientRef.current;
+    const { data } = await client.from("trip_notes").select("*").eq("travel_plan_id", planId).order("created_at", { ascending: false });
+    if (data) {
+      const mapped = data.map((r: Record<string, unknown>): TripNote => ({
+        id: r.id as string, travelPlanId: r.travel_plan_id as string, userId: r.user_id as string,
+        content: (r.content as string) || null, photoUrl: (r.photo_url as string) || null,
+        noteType: (r.note_type as TripNote["noteType"]) || "note", createdAt: r.created_at as string,
+      }));
+      setTripNotes((prev) => ({ ...prev, [planId]: mapped }));
+    }
+  }, []);
+
+  const addTransport = useCallback((t: PlanTransport) => {
+    setTransports((prev) => ({ ...prev, [t.travelPlanId]: [...(prev[t.travelPlanId] || []), t] }));
+    const client = clientRef.current;
+    client.from("plan_transport").insert({
+      id: t.id, travel_plan_id: t.travelPlanId, user_id: user?.id,
+      transport_type: t.transportType, title: t.title, confirmation_number: t.confirmationNumber,
+      booking_url: t.bookingUrl, provider: t.provider, pickup_date: t.pickupDate,
+      dropoff_date: t.dropoffDate, notes: t.notes, is_booked: t.isBooked, sort_order: t.sortOrder,
+    });
+  }, [user]);
+
+  const updateTransport = useCallback((id: string, updates: Partial<PlanTransport>) => {
+    setTransports((prev) => {
+      const n = { ...prev };
+      for (const k of Object.keys(n)) n[k] = n[k].map((t) => t.id === id ? { ...t, ...updates } : t);
+      return n;
+    });
+    const dbUp: Record<string, unknown> = {};
+    if ("title" in updates) dbUp.title = updates.title;
+    if ("confirmationNumber" in updates) dbUp.confirmation_number = updates.confirmationNumber;
+    if ("bookingUrl" in updates) dbUp.booking_url = updates.bookingUrl;
+    if ("provider" in updates) dbUp.provider = updates.provider;
+    if ("pickupDate" in updates) dbUp.pickup_date = updates.pickupDate;
+    if ("dropoffDate" in updates) dbUp.dropoff_date = updates.dropoffDate;
+    if ("notes" in updates) dbUp.notes = updates.notes;
+    if ("isBooked" in updates) dbUp.is_booked = updates.isBooked;
+    clientRef.current.from("plan_transport").update(dbUp).eq("id", id);
+  }, []);
+
+  const deleteTransport = useCallback((id: string, planId: string) => {
+    setTransports((prev) => ({ ...prev, [planId]: (prev[planId] || []).filter((t) => t.id !== id) }));
+    clientRef.current.from("plan_transport").delete().eq("id", id);
+  }, []);
+
+  const addTripNote = useCallback((n: TripNote) => {
+    setTripNotes((prev) => ({ ...prev, [n.travelPlanId]: [n, ...(prev[n.travelPlanId] || [])] }));
+    clientRef.current.from("trip_notes").insert({
+      id: n.id, travel_plan_id: n.travelPlanId, user_id: user?.id,
+      content: n.content, photo_url: n.photoUrl, note_type: n.noteType,
+    });
+  }, [user]);
+
+  const deleteTripNote = useCallback((id: string, planId: string) => {
+    setTripNotes((prev) => ({ ...prev, [planId]: (prev[planId] || []).filter((n) => n.id !== id) }));
+    clientRef.current.from("trip_notes").delete().eq("id", id);
   }, []);
 
   // Save a complete AI-generated plan to Supabase
@@ -365,8 +453,8 @@ export function TravelPlanProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const value = useMemo(
-    () => ({ plans, itineraryItems, accommodations, isLoading, dispatch, fetchItinerary, fetchAccommodations, saveAiPlan }),
-    [plans, itineraryItems, accommodations, isLoading, dispatch, fetchItinerary, fetchAccommodations, saveAiPlan]
+    () => ({ plans, itineraryItems, accommodations, transports, tripNotes, isLoading, dispatch, fetchItinerary, fetchAccommodations, fetchTransports, fetchTripNotes, saveAiPlan, addTransport, updateTransport, deleteTransport, addTripNote, deleteTripNote }),
+    [plans, itineraryItems, accommodations, transports, tripNotes, isLoading, dispatch, fetchItinerary, fetchAccommodations, fetchTransports, fetchTripNotes, saveAiPlan, addTransport, updateTransport, deleteTransport, addTripNote, deleteTripNote]
   );
 
   return <TravelPlanContext.Provider value={value}>{children}</TravelPlanContext.Provider>;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { TravelPlan, ItineraryItem, PlanAccommodation } from "@/lib/types";
+import { TravelPlan, ItineraryItem, PlanAccommodation, PlanTransport, TripNote } from "@/lib/types";
 import { useTravelPlans } from "@/context/TravelPlanContext";
 import DaySchedule from "./DaySchedule";
 import ConfirmModal from "@/components/shared/ConfirmModal";
@@ -10,13 +10,15 @@ interface Props {
   plan: TravelPlan;
   items: ItineraryItem[];
   accoms: PlanAccommodation[];
+  transports: PlanTransport[];
+  notes: TripNote[];
   onDelete: () => void;
 }
 
-type Tab = "overview" | "hotels" | "transport" | number;
+type Tab = "overview" | "hotels" | "transport" | "notes" | number;
 
-export default function SavedPlanEditor({ plan, items, accoms, onDelete }: Props) {
-  const { dispatch } = useTravelPlans();
+export default function SavedPlanEditor({ plan, items, accoms, transports, notes, onDelete }: Props) {
+  const { dispatch, addTransport, updateTransport, deleteTransport, addTripNote, deleteTripNote } = useTravelPlans();
   const initialDay = items.length > 0 ? Math.min(...items.map((i) => i.dayNumber || 1)) : 1;
   const [activeTab, setActiveTab] = useState<Tab>(initialDay);
   const [editingHeader, setEditingHeader] = useState(false);
@@ -27,7 +29,9 @@ export default function SavedPlanEditor({ plan, items, accoms, onDelete }: Props
   const [refineInput, setRefineInput] = useState("");
   const [refineLoading, setRefineLoading] = useState(false);
   const [editingAccom, setEditingAccom] = useState<string | null>(null);
+  const [editingTransport, setEditingTransport] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [newNote, setNewNote] = useState("");
 
   // Group items by day
   const dayGroups: Record<number, ItineraryItem[]> = {};
@@ -118,6 +122,14 @@ export default function SavedPlanEditor({ plan, items, accoms, onDelete }: Props
         <button onClick={handleAddDay} className="px-4 py-2.5 bg-teal-50 text-teal-700 rounded-xl text-sm font-medium hover:bg-teal-100 whitespace-nowrap">+ Day</button>
         <button onClick={() => setActiveTab("hotels")} className={`px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${activeTab === "hotels" ? "bg-teal-500 text-white" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}>🏨 Hotels</button>
         <button onClick={() => setActiveTab("transport")} className={`px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${activeTab === "transport" ? "bg-teal-500 text-white" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}>🚗 Transport</button>
+        <button onClick={() => setActiveTab("notes")} className={`px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${activeTab === "notes" ? "bg-teal-500 text-white" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}>📝 Notes</button>
+        {plan.status !== "completed" && (
+          <button onClick={() => dispatch({ type: "UPDATE_PLAN", payload: { id: plan.id, status: "completed" } })}
+            className="px-4 py-2.5 bg-green-50 text-green-700 rounded-xl text-sm font-medium hover:bg-green-100 whitespace-nowrap">✅ Complete</button>
+        )}
+        {plan.status === "completed" && (
+          <span className="px-4 py-2.5 bg-green-100 text-green-800 rounded-xl text-sm font-medium whitespace-nowrap">✅ Completed</span>
+        )}
       </div>
 
       {/* Overview */}
@@ -226,21 +238,119 @@ export default function SavedPlanEditor({ plan, items, accoms, onDelete }: Props
         </div>
       )}
 
-      {/* Transport */}
+      {/* Transport — bookings notebook */}
       {activeTab === "transport" && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-          <h3 className="font-semibold text-gray-900">Transportation</h3>
-          <div className="p-4 bg-gray-50 rounded-xl">
-            <h4 className="font-medium text-gray-900 text-sm mb-2">🚗 Car Rental</h4>
-            <div className="flex gap-2">
-              <a href={`https://www.google.com/search?q=car+rental+${encodeURIComponent(plan.countryName)}`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-sky-50 text-sky-600 rounded-lg text-xs font-medium hover:bg-sky-100">Search Rentals</a>
-              <a href={`https://www.rentalcars.com/search/${encodeURIComponent(plan.countryName)}`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-orange-50 text-orange-600 rounded-lg text-xs font-medium hover:bg-orange-100">RentalCars</a>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gray-900">Transport & Bookings</h3>
+            <button onClick={() => {
+              const id = crypto.randomUUID();
+              addTransport({ id, travelPlanId: plan.id, userId: "", transportType: "flight", title: "New booking", confirmationNumber: null, bookingUrl: null, provider: null, pickupDate: null, dropoffDate: null, notes: null, isBooked: false, sortOrder: transports.length, createdAt: new Date().toISOString() });
+              setEditingTransport(id);
+            }} className="text-sm px-3 py-1.5 bg-teal-50 text-teal-700 rounded-lg hover:bg-teal-100">+ Add</button>
+          </div>
+
+          {/* Search links */}
+          <div className="flex gap-2 mb-4">
+            <a href={`https://www.google.com/travel/flights?q=flights+to+${encodeURIComponent(plan.countryName)}`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-sky-50 text-sky-600 rounded-lg text-xs font-medium hover:bg-sky-100">✈️ Search Flights</a>
+            <a href={`https://www.google.com/search?q=car+rental+${encodeURIComponent(plan.countryName)}`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-orange-50 text-orange-600 rounded-lg text-xs font-medium hover:bg-orange-100">🚗 Car Rentals</a>
+          </div>
+
+          {transports.length === 0 ? (
+            <div className="text-center py-8"><p className="text-3xl mb-2">🎫</p><p className="text-sm text-gray-500">No bookings yet. Add flights, car rentals, trains, etc.</p></div>
+          ) : (
+            <div className="space-y-3">
+              {transports.map((t) => (
+                <div key={t.id} className="p-4 bg-gray-50 rounded-xl">
+                  {editingTransport === t.id ? (
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <select value={t.transportType} onChange={(e) => updateTransport(t.id, { transportType: e.target.value as PlanTransport["transportType"] })}
+                          className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm"><option value="flight">✈️ Flight</option><option value="car">🚗 Car</option><option value="train">🚆 Train</option><option value="bus">🚌 Bus</option><option value="ferry">⛴️ Ferry</option><option value="other">📌 Other</option></select>
+                        <input value={t.title} onChange={(e) => updateTransport(t.id, { title: e.target.value })} placeholder="Title (e.g. LAX → NRT)" className="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                      </div>
+                      <input value={t.provider || ""} onChange={(e) => updateTransport(t.id, { provider: e.target.value })} placeholder="Provider (United, Hertz...)" className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                      <input value={t.confirmationNumber || ""} onChange={(e) => updateTransport(t.id, { confirmationNumber: e.target.value })} placeholder="Confirmation / Ticket #" className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                      <input value={t.bookingUrl || ""} onChange={(e) => updateTransport(t.id, { bookingUrl: e.target.value })} placeholder="Booking URL" className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input type="date" value={t.pickupDate || ""} onChange={(e) => updateTransport(t.id, { pickupDate: e.target.value })} className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm" />
+                        <input type="date" value={t.dropoffDate || ""} onChange={(e) => updateTransport(t.id, { dropoffDate: e.target.value })} className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm" />
+                      </div>
+                      <textarea value={t.notes || ""} onChange={(e) => updateTransport(t.id, { notes: e.target.value })} placeholder="Notes..." rows={2} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                      <div className="flex justify-between">
+                        <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={t.isBooked} onChange={(e) => updateTransport(t.id, { isBooked: e.target.checked })} className="rounded border-gray-300 text-teal-500" />Booked</label>
+                        <div className="flex gap-2">
+                          <button onClick={() => deleteTransport(t.id, plan.id)} className="text-xs text-rose-500">Delete</button>
+                          <button onClick={() => setEditingTransport(null)} className="text-xs px-3 py-1.5 bg-teal-500 text-white rounded-lg">Done</button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="cursor-pointer" onClick={() => setEditingTransport(t.id)}>
+                      <div className="flex items-center gap-2">
+                        <span>{t.transportType === "flight" ? "✈️" : t.transportType === "car" ? "🚗" : t.transportType === "train" ? "🚆" : "🎫"}</span>
+                        <h4 className="font-medium text-gray-900 text-sm">{t.title}</h4>
+                        {t.isBooked && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Booked</span>}
+                      </div>
+                      {t.provider && <p className="text-xs text-gray-500 mt-0.5">{t.provider}</p>}
+                      {t.confirmationNumber && <p className="text-xs text-teal-600 mt-0.5">#{t.confirmationNumber}</p>}
+                      {t.bookingUrl && <a href={t.bookingUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-xs text-blue-600 hover:underline mt-0.5 block">View booking →</a>}
+                      <p className="text-xs text-gray-400 mt-1">Click to edit</p>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Notes & Photos — post-trip reference */}
+      {activeTab === "notes" && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <h3 className="font-semibold text-gray-900 mb-4">Trip Notes & Photos</h3>
+
+          {/* Add note */}
+          <div className="mb-4">
+            <div className="flex gap-2">
+              <input value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="Add a note, memory, or photo URL..."
+                className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newNote.trim()) {
+                    const isPhoto = newNote.match(/\.(jpg|jpeg|png|gif|webp)/i) || newNote.startsWith("http");
+                    addTripNote({ id: crypto.randomUUID(), travelPlanId: plan.id, userId: "", content: isPhoto ? null : newNote.trim(), photoUrl: isPhoto ? newNote.trim() : null, noteType: isPhoto ? "photo" : "note", createdAt: new Date().toISOString() });
+                    setNewNote("");
+                  }
+                }} />
+              <button onClick={() => {
+                if (!newNote.trim()) return;
+                const isPhoto = newNote.match(/\.(jpg|jpeg|png|gif|webp)/i) || newNote.startsWith("http");
+                addTripNote({ id: crypto.randomUUID(), travelPlanId: plan.id, userId: "", content: isPhoto ? null : newNote.trim(), photoUrl: isPhoto ? newNote.trim() : null, noteType: isPhoto ? "photo" : "note", createdAt: new Date().toISOString() });
+                setNewNote("");
+              }} className="px-4 py-2.5 bg-teal-500 text-white text-sm rounded-xl hover:bg-teal-600">Add</button>
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Paste a photo URL to add an image, or type text for a note</p>
           </div>
-          <div className="p-4 bg-gray-50 rounded-xl">
-            <h4 className="font-medium text-gray-900 text-sm mb-2">✈️ Flights</h4>
-            <a href={`https://www.google.com/travel/flights?q=flights+to+${encodeURIComponent(plan.countryName)}`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-sky-50 text-sky-600 rounded-lg text-xs font-medium hover:bg-sky-100 inline-block">Search Flights</a>
-          </div>
+
+          {notes.length === 0 ? (
+            <div className="text-center py-8"><p className="text-3xl mb-2">📝</p><p className="text-sm text-gray-500">No notes yet. Add memories, photos, or highlights from your trip!</p></div>
+          ) : (
+            <div className="space-y-3">
+              {notes.map((n) => (
+                <div key={n.id} className="p-4 bg-gray-50 rounded-xl group">
+                  {n.noteType === "photo" && n.photoUrl && (
+                    <img src={n.photoUrl} alt="Trip photo" className="w-full h-48 object-cover rounded-lg mb-2" />
+                  )}
+                  {n.content && <p className="text-sm text-gray-700">{n.content}</p>}
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-xs text-gray-400">{new Date(n.createdAt).toLocaleDateString()}</span>
+                    <button onClick={() => deleteTripNote(n.id, plan.id)}
+                      className="text-xs text-gray-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all">Delete</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
       {showDeleteConfirm && (
