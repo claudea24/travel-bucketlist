@@ -29,9 +29,15 @@ const INTEREST_OPTIONS = [
 ];
 
 export default function TripSetup({ countryName, savedActivities, onGenerate }: TripSetupProps) {
-  const [days, setDays] = useState(5);
+  const [manualDays, setManualDays] = useState(5);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+
+  // Auto-calculate days from dates
+  const daysFromDates = startDate && endDate
+    ? Math.max(1, Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000) + 1)
+    : 0;
+  const days = daysFromDates || manualDays;
   const [hasTransport, setHasTransport] = useState(false);
   const [selectedInterests, setSelectedInterests] = useState<Set<string>>(new Set(["sightseeing", "food", "culture"]));
   const [selectedActivities, setSelectedActivities] = useState<Set<string>>(new Set(savedActivities));
@@ -81,28 +87,10 @@ export default function TripSetup({ countryName, savedActivities, onGenerate }: 
 
   return (
     <div className="space-y-8">
-      {/* Duration */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <h3 className="font-semibold text-gray-900 mb-1">How long is your trip?</h3>
-        <p className="text-sm text-gray-500 mb-4">Select the number of days</p>
-        <div className="flex gap-2 flex-wrap">
-          {[2, 3, 5, 7, 10, 14, 21].map((d) => (
-            <button key={d} onClick={() => setDays(d)}
-              className={`px-5 py-3 rounded-xl text-sm font-medium transition-all ${
-                days === d
-                  ? "bg-teal-500 text-white shadow-sm"
-                  : "bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200"
-              }`}>
-              {d} {d === 1 ? "day" : "days"}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Dates */}
+      {/* Dates first */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         <h3 className="font-semibold text-gray-900 mb-1">When are you going?</h3>
-        <p className="text-sm text-gray-500 mb-4">Optional — you can set dates later</p>
+        <p className="text-sm text-gray-500 mb-4">Set your dates, or pick a duration below</p>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-gray-500 mb-1 block">Start Date</label>
@@ -112,10 +100,34 @@ export default function TripSetup({ countryName, savedActivities, onGenerate }: 
           <div>
             <label className="text-xs text-gray-500 mb-1 block">End Date</label>
             <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
+              min={startDate || undefined}
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent" />
           </div>
         </div>
+        {daysFromDates > 0 && (
+          <p className="text-sm text-teal-600 font-medium mt-3">{daysFromDates} {daysFromDates === 1 ? "day" : "days"} trip</p>
+        )}
       </div>
+
+      {/* Duration — only show if dates not set */}
+      {!daysFromDates && (
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <h3 className="font-semibold text-gray-900 mb-1">Or pick a duration</h3>
+        <p className="text-sm text-gray-500 mb-4">How many days?</p>
+        <div className="flex gap-2 flex-wrap">
+          {[2, 3, 5, 7, 10, 14, 21].map((d) => (
+            <button key={d} onClick={() => setManualDays(d)}
+              className={`px-5 py-3 rounded-xl text-sm font-medium transition-all ${
+                manualDays === d
+                  ? "bg-teal-500 text-white shadow-sm"
+                  : "bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200"
+              }`}>
+              {d} {d === 1 ? "day" : "days"}
+            </button>
+          ))}
+        </div>
+      </div>
+      )}
 
       {/* Transport */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
