@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { countryName, activities, days, interests, currentItinerary, refineRequest } = body;
+  const { countryName, activities, days, interests, hasTransport, currentItinerary, refineRequest } = body;
 
   if (!countryName) {
     return NextResponse.json({ error: "countryName is required" }, { status: 400 });
@@ -69,6 +69,7 @@ Apply the user's changes to the itinerary. Return the COMPLETE updated itinerary
 
 ${selectedActivities ? `The traveler is especially interested in: ${selectedActivities}` : ""}
 Their general interests: ${userInterests}
+Transportation: ${hasTransport ? "They have a rental car so include driving destinations and day trips" : "They will use public transport, taxis, and walking — keep activities accessible without a car"}
 
 Return ONLY a JSON object (no markdown, no code fences, just valid JSON):
 {

@@ -43,13 +43,37 @@ export default function ActivitySection({ countryName, countryCode, onSelectActi
     async function fetchActivities() {
       setLoading(true);
       setError(false);
+
+      // Check localStorage cache first (valid for 7 days)
+      const cacheKey = `activities_${countryCode}`;
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          const age = Date.now() - new Date(parsed.cachedAt).getTime();
+          if (age < 7 * 86400000 && parsed.activities?.length > 0) {
+            if (!cancelled) {
+              setActivities(parsed.activities);
+              setLoading(false);
+            }
+            return;
+          }
+        }
+      } catch { /* ignore cache errors */ }
+
       try {
         const res = await fetch(
           `/api/activities?country=${encodeURIComponent(countryName)}&code=${encodeURIComponent(countryCode)}`
         );
         if (!res.ok) throw new Error("Failed to fetch");
         const data = await res.json();
-        if (!cancelled) setActivities(data.activities || []);
+        if (!cancelled) {
+          setActivities(data.activities || []);
+          // Cache the result
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify({ activities: data.activities, cachedAt: new Date().toISOString() }));
+          } catch { /* ignore storage full */ }
+        }
       } catch {
         if (!cancelled) setError(true);
       }

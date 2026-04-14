@@ -113,10 +113,14 @@ Each country page (`/country/[code]`) includes:
   - Day-by-day schedule with times, costs, categories
   - Hotel/Airbnb area recommendations with direct booking links
   - Budget breakdown + practical travel tips
-  - **Editable**: remove days/activities inline, add accommodation notes, save chosen Airbnb/hotel
-  - **Refine with AI**: chat-style input to modify ("make it shorter", "add more food", "remove shopping")
+  - **Setup wizard**: choose days (2-21), car/public transport, interests, pick from saved activities, add custom ones
+  - **Diary/calendar view**: day-by-day cards with drag-and-drop reordering (@dnd-kit)
+  - Click activity titles to edit inline, remove items/days
+  - **Refine with AI**: chat-style input to modify ("make day 3 more relaxing", "add more food")
   - Quick suggestion chips for common refinements
-  - Save finalized itinerary locally
+  - Hotel/Airbnb area recommendations with direct booking links
+  - Save finalized itinerary
+  - "Plan My Trip" from country page → redirects to `/personal/plan/new` with saved activities pre-loaded
 
 ### Activity Data Pipeline
 1. **Primary**: OpenAI generates 12-15 specific activities per country (real place names, descriptions, categories)
@@ -190,7 +194,9 @@ src/
 │   ├── personal/                     # My Trips components
 │   │   ├── PersonalDashboard.tsx
 │   │   ├── TravelPlanCard.tsx
-│   │   └── TripPlanner.tsx
+│   │   ├── TripPlanner.tsx
+│   │   ├── TripSetup.tsx             # Trip planning setup wizard
+│   │   └── TripCalendar.tsx          # Diary/calendar view with drag-and-drop
 │   ├── social/                       # Community components
 │   │   ├── SocialFeed.tsx
 │   │   ├── PostCard.tsx

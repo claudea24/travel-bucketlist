@@ -2,22 +2,22 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Country } from "@/lib/types";
 import { getCountryByCode } from "@/lib/countries";
 import { useBucketList } from "@/context/BucketListContext";
 import StatusBadge from "@/components/shared/StatusBadge";
 import LoadingSpinner from "@/components/shared/LoadingSpinner";
 import ActivitySection from "@/components/shared/ActivitySection";
-import AiTripPlanner from "@/components/shared/AiTripPlanner";
 
 interface CountryDetailProps {
   code: string;
 }
 
 export default function CountryDetail({ code }: CountryDetailProps) {
+  const router = useRouter();
   const [country, setCountry] = useState<Country | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showPlanner, setShowPlanner] = useState(false);
   const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
   const { items, dispatch } = useBucketList();
 
@@ -82,7 +82,13 @@ export default function CountryDetail({ code }: CountryDetailProps) {
     } else if (saved.status === "want_to_visit") {
       dispatch({ type: "UPDATE_ITEM", payload: { id: saved.id, status: "planning" } });
     }
-    setShowPlanner(true);
+    // Store selected activities for the planner
+    localStorage.setItem(`plan_setup_${country.cca3}`, JSON.stringify({
+      countryName: country.name.common,
+      countryCode: country.cca3,
+      selectedActivities,
+    }));
+    router.push(`/personal/plan/new?country=${country.cca3}&name=${encodeURIComponent(country.name.common)}`);
   };
 
   const handleActivitySelect = useCallback((activities: { name: string }[]) => {
@@ -229,17 +235,7 @@ export default function CountryDetail({ code }: CountryDetailProps) {
         </div>
       </div>
 
-      {/* AI Trip Planner */}
-      {showPlanner && (
-        <AiTripPlanner
-          countryName={country.name.common}
-          countryCode={country.cca3}
-          selectedActivities={selectedActivities}
-          onClose={() => setShowPlanner(false)}
-        />
-      )}
-
-      {/* Things to Do — powered by Wikivoyage */}
+      {/* Things to Do */}
       <ActivitySection
         countryName={country.name.common}
         countryCode={country.cca3}
