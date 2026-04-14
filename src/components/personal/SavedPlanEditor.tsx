@@ -16,7 +16,8 @@ type Tab = "overview" | "hotels" | "transport" | number;
 
 export default function SavedPlanEditor({ plan, items, accoms, onDelete }: Props) {
   const { dispatch } = useTravelPlans();
-  const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const initialDay = items.length > 0 ? Math.min(...items.map((i) => i.dayNumber || 1)) : 1;
+  const [activeTab, setActiveTab] = useState<Tab>(initialDay);
   const [editingHeader, setEditingHeader] = useState(false);
   const [title, setTitle] = useState(plan.title);
   const [startDate, setStartDate] = useState(plan.startDate || "");
