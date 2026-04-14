@@ -52,6 +52,7 @@ export default function NewPlanClient() {
   const [step, setStep] = useState<"setup" | "generating" | "calendar">("setup");
   const [plan, setPlan] = useState<TripPlan | null>(null);
   const [savedActivities, setSavedActivities] = useState<string[]>([]);
+  const [error, setError] = useState("");
 
   // Load saved activities from country detail page
   useEffect(() => {
@@ -74,10 +75,13 @@ export default function NewPlanClient() {
     customActivities: string[];
   }) => {
     setStep("generating");
+    setError("");
 
     const allActivities = [...config.selectedActivities, ...config.customActivities];
 
     try {
+      if (!countryName) throw new Error("Country name is missing. Please go back and click 'Plan My Trip' from a country page.");
+
       const res = await fetch("/api/plan-trip", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -91,9 +95,8 @@ export default function NewPlanClient() {
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to generate");
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      if (!res.ok || data.error) throw new Error(data.error || `API returned ${res.status}`);
 
       // Add IDs to activities for drag-drop
       const planWithIds: TripPlan = {
@@ -114,7 +117,8 @@ export default function NewPlanClient() {
       setPlan(planWithIds);
       setStep("calendar");
     } catch (e) {
-      console.error(e);
+      console.error("Plan generation error:", e);
+      setError(e instanceof Error ? e.message : "Failed to generate itinerary. Please try again.");
       setStep("setup");
     }
   };
@@ -154,6 +158,12 @@ export default function NewPlanClient() {
           );
         })}
       </div>
+
+      {error && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl text-sm mb-4">
+          {error}
+        </div>
+      )}
 
       {step === "setup" && (
         <TripSetup
