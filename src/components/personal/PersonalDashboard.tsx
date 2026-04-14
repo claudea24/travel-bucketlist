@@ -39,7 +39,7 @@ export default function PersonalDashboard() {
         {[
           { label: "Trip Plans", count: activePlans.length, icon: "📋", color: "bg-amber-50 text-amber-700" },
           { label: "Want to Visit", count: wishlist.length, icon: "💛", color: "bg-teal-50 text-teal-700" },
-          { label: "Visited", count: visited.length, icon: "✅", color: "bg-blue-50 text-blue-700" },
+          { label: "Visited", count: new Set([...visited.map((v) => v.countryCode), ...completedPlans.map((p) => p.countryCode)]).size, icon: "✅", color: "bg-blue-50 text-blue-700" },
         ].map((stat) => (
           <div key={stat.label} className={`${stat.color} rounded-2xl p-4 text-center`}>
             <p className="text-2xl font-bold">{stat.count}</p>
@@ -53,7 +53,7 @@ export default function PersonalDashboard() {
         {([
           { value: "plans" as Section, label: `Trip Plans (${activePlans.length})` },
           { value: "wishlist" as Section, label: `Want to Visit (${wishlist.length})` },
-          { value: "visited" as Section, label: `Visited (${visited.length})` },
+          { value: "visited" as Section, label: `Visited (${new Set([...visited.map((v) => v.countryCode), ...completedPlans.map((p) => p.countryCode)]).size})` },
         ]).map((tab) => (
           <button key={tab.value} onClick={() => setSection(tab.value)}
             className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all ${
