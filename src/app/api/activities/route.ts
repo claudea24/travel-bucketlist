@@ -160,21 +160,13 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Try AI first, fall back to Wikivoyage
+    // Try AI first, fall back to Wikivoyage — return immediately without images
     let activities = await generateActivitiesWithAI(countryName);
     if (activities.length === 0) {
       activities = await fetchWikivoyageActivities(countryName);
     }
 
-    // Fetch Wikipedia images in parallel
-    await Promise.all(
-      activities.slice(0, 15).map(async (activity) => {
-        let img = await fetchWikipediaImage(activity.name);
-        if (!img) img = await fetchWikipediaImage(`${activity.name} ${countryName}`);
-        activity.imageUrl = img;
-      })
-    );
-
+    // Skip image fetching here — client will lazy-load images
     return NextResponse.json({
       country: countryName,
       countryCode,

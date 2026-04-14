@@ -24,6 +24,56 @@ const categoryConfig: Record<string, { emoji: string; label: string; color: stri
   relaxation: { emoji: "🏨", label: "Stay", color: "bg-blue-50 text-blue-700", gradient: "from-blue-400 to-indigo-500" },
 };
 
+// Lazy-loading image component that fetches from Wikipedia API
+function LazyWikiImage({ name, countryName, fallbackGradient, fallbackEmoji }: {
+  name: string; countryName: string; fallbackGradient: string; fallbackEmoji: string;
+}) {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    // Check image cache
+    const cacheKey = `img_${name}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) { setImageUrl(cached === "null" ? null : cached); setLoaded(true); return; }
+
+    fetch(`/api/wiki-image?q=${encodeURIComponent(name)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        const url = d.imageUrl || null;
+        setImageUrl(url);
+        setLoaded(true);
+        sessionStorage.setItem(cacheKey, url || "null");
+        // If no image, try with country name
+        if (!url) {
+          fetch(`/api/wiki-image?q=${encodeURIComponent(name + " " + countryName)}`)
+            .then((r) => r.json())
+            .then((d2) => {
+              if (d2.imageUrl) {
+                setImageUrl(d2.imageUrl);
+                sessionStorage.setItem(cacheKey, d2.imageUrl);
+              }
+            }).catch(() => {});
+        }
+      })
+      .catch(() => setLoaded(true));
+  }, [name, countryName]);
+
+  if (!loaded || !imageUrl) {
+    return (
+      <div className={`w-full h-full bg-gradient-to-br ${fallbackGradient} flex items-center justify-center`}>
+        <span className="text-4xl opacity-50">{fallbackEmoji}</span>
+      </div>
+    );
+  }
+
+  return (
+    <Image src={imageUrl} alt={name} fill
+      className="object-cover group-hover:scale-105 transition-transform duration-500"
+      sizes="(max-width: 640px) 100vw, 50vw" unoptimized />
+  );
+}
+
 interface ActivitySectionProps {
   countryName: string;
   countryCode: string;
@@ -44,7 +94,7 @@ export default function ActivitySection({ countryName, countryCode, onSelectActi
       setLoading(true);
       setError(false);
 
-      // Check localStorage cache first (valid for 7 days)
+      // Check localStorage cache (7-day TTL)
       const cacheKey = `activities_${countryCode}`;
       try {
         const cached = localStorage.getItem(cacheKey);
@@ -52,14 +102,11 @@ export default function ActivitySection({ countryName, countryCode, onSelectActi
           const parsed = JSON.parse(cached);
           const age = Date.now() - new Date(parsed.cachedAt).getTime();
           if (age < 7 * 86400000 && parsed.activities?.length > 0) {
-            if (!cancelled) {
-              setActivities(parsed.activities);
-              setLoading(false);
-            }
+            if (!cancelled) { setActivities(parsed.activities); setLoading(false); }
             return;
           }
         }
-      } catch { /* ignore cache errors */ }
+      } catch { /* ignore */ }
 
       try {
         const res = await fetch(
@@ -69,10 +116,9 @@ export default function ActivitySection({ countryName, countryCode, onSelectActi
         const data = await res.json();
         if (!cancelled) {
           setActivities(data.activities || []);
-          // Cache the result
           try {
             localStorage.setItem(cacheKey, JSON.stringify({ activities: data.activities, cachedAt: new Date().toISOString() }));
-          } catch { /* ignore storage full */ }
+          } catch { /* storage full */ }
         }
       } catch {
         if (!cancelled) setError(true);
@@ -93,7 +139,6 @@ export default function ActivitySection({ countryName, countryCode, onSelectActi
     });
   };
 
-  // Notify parent of selected activities
   useEffect(() => {
     if (onSelectActivities) {
       onSelectActivities(activities.filter((a) => savedActivities.has(a.name)));
@@ -113,45 +158,30 @@ export default function ActivitySection({ countryName, countryCode, onSelectActi
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-gray-900">Things to Do</h2>
         {savedActivities.size > 0 && (
-          <span className="text-sm text-teal-600 font-medium">
-            {savedActivities.size} saved
-          </span>
+          <span className="text-sm text-teal-600 font-medium">{savedActivities.size} saved</span>
         )}
       </div>
 
       {/* Category filter */}
       {categories.length > 1 && (
         <div className="flex gap-2 overflow-x-auto hide-scrollbar mb-5 pb-1">
-          <button
-            onClick={() => setSelectedCategory("all")}
+          <button onClick={() => setSelectedCategory("all")}
             className={`px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-              selectedCategory === "all"
-                ? "bg-teal-500 text-white"
-                : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
-            }`}
-          >
-            All
-          </button>
+              selectedCategory === "all" ? "bg-teal-500 text-white" : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+            }`}>All</button>
           {categories.map((cat) => {
             const config = categoryConfig[cat] || { emoji: "📌", label: cat };
             return (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
+              <button key={cat} onClick={() => setSelectedCategory(cat)}
                 className={`px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                  selectedCategory === cat
-                    ? "bg-teal-500 text-white"
-                    : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
-                }`}
-              >
-                {config.emoji} {config.label}
-              </button>
+                  selectedCategory === cat ? "bg-teal-500 text-white" : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+                }`}>{config.emoji} {config.label}</button>
             );
           })}
         </div>
       )}
 
-      {/* Activity cards — visual grid */}
+      {/* Activity cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {filtered.map((activity, i) => {
           const config = categoryConfig[activity.category] || {
@@ -160,46 +190,28 @@ export default function ActivitySection({ countryName, countryCode, onSelectActi
           const isSaved = savedActivities.has(activity.name);
 
           return (
-            <div
-              key={i}
-              className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-all group"
-            >
-              {/* Image / gradient header */}
+            <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-all group">
+              {/* Image — lazy loaded */}
               <div className="relative h-36 overflow-hidden">
-                {activity.imageUrl ? (
-                  <Image
-                    src={activity.imageUrl}
-                    alt={activity.name}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    sizes="(max-width: 640px) 100vw, 50vw"
-                    unoptimized
-                  />
-                ) : (
-                  <div className={`w-full h-full bg-gradient-to-br ${config.gradient} flex items-center justify-center`}>
-                    <span className="text-4xl opacity-50">{config.emoji}</span>
-                  </div>
-                )}
+                <LazyWikiImage
+                  name={activity.name}
+                  countryName={countryName}
+                  fallbackGradient={config.gradient}
+                  fallbackEmoji={config.emoji}
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
 
-                {/* Category badge */}
                 <span className={`absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-xs font-medium backdrop-blur-sm ${config.color}`}>
                   {config.emoji} {config.label}
                 </span>
 
-                {/* Save heart */}
-                <button
-                  onClick={() => toggleSaveActivity(activity.name)}
+                <button onClick={() => toggleSaveActivity(activity.name)}
                   className={`absolute top-2.5 right-2.5 w-8 h-8 flex items-center justify-center rounded-full transition-all ${
-                    isSaved
-                      ? "bg-rose-500 text-white"
-                      : "bg-white/70 backdrop-blur-sm text-gray-500 hover:text-rose-500 hover:bg-white"
-                  }`}
-                >
+                    isSaved ? "bg-rose-500 text-white" : "bg-white/70 backdrop-blur-sm text-gray-500 hover:text-rose-500 hover:bg-white"
+                  }`}>
                   {isSaved ? "♥" : "♡"}
                 </button>
 
-                {/* Title on image */}
                 <h4 className="absolute bottom-2.5 left-3 right-3 text-white font-semibold text-sm drop-shadow-sm line-clamp-1">
                   {activity.name}
                 </h4>
@@ -208,41 +220,25 @@ export default function ActivitySection({ countryName, countryCode, onSelectActi
               {/* Content */}
               <div className="p-3.5">
                 {activity.description && (
-                  <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed mb-3">
-                    {activity.description}
-                  </p>
+                  <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed mb-3">{activity.description}</p>
                 )}
-
-                {/* Action buttons */}
                 <div className="flex items-center gap-2">
-                  <a
-                    href={activity.youtubeSearchUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <a href={activity.youtubeSearchUrl} target="_blank" rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors"
-                  >
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M23.5 6.19a3.02 3.02 0 0 0-2.12-2.14C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.38.55A3.02 3.02 0 0 0 .5 6.19 31.6 31.6 0 0 0 0 12a31.6 31.6 0 0 0 .5 5.81 3.02 3.02 0 0 0 2.12 2.14c1.88.55 9.38.55 9.38.55s7.5 0 9.38-.55a3.02 3.02 0 0 0 2.12-2.14A31.6 31.6 0 0 0 24 12a31.6 31.6 0 0 0-.5-5.81zM9.75 15.02V8.98L15.5 12l-5.75 3.02z" />
                     </svg>
                     YouTube
                   </a>
-                  <a
-                    href={`https://www.google.com/search?q=${encodeURIComponent(activity.name + " " + countryName)}&tbm=isch`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors"
-                  >
+                  <a href={`https://www.google.com/search?q=${encodeURIComponent(activity.name + " " + countryName)}&tbm=isch`}
+                    target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors">
                     📷 Photos
                   </a>
-                  <a
-                    href={`https://www.google.com/search?q=${encodeURIComponent(activity.name + " " + countryName + " travel guide")}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-100 transition-colors"
-                  >
+                  <a href={`https://www.google.com/search?q=${encodeURIComponent(activity.name + " " + countryName + " travel guide")}`}
+                    target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-100 transition-colors">
                     🔍 More
                   </a>
                 </div>
@@ -253,7 +249,7 @@ export default function ActivitySection({ countryName, countryCode, onSelectActi
       </div>
 
       <p className="text-xs text-gray-300 mt-4 text-center">
-        Travel tips powered by Wikivoyage &middot; Images from Wikipedia
+        Suggestions powered by AI &middot; Images from Wikipedia
       </p>
     </div>
   );
