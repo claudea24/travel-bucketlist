@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { TravelPlan } from "@/lib/types";
 import { useTravelPlans } from "@/context/TravelPlanContext";
+import { useBucketList } from "@/context/BucketListContext";
 import ConfirmModal from "@/components/shared/ConfirmModal";
 
 const statusConfig: Record<TravelPlan["status"], { label: string; color: string; icon: string }> = {
@@ -15,7 +16,8 @@ const statusConfig: Record<TravelPlan["status"], { label: string; color: string;
 };
 
 export default function TravelPlanCard({ plan }: { plan: TravelPlan }) {
-  const { dispatch } = useTravelPlans();
+  const { dispatch, plans } = useTravelPlans();
+  const { items, dispatch: bucketDispatch } = useBucketList();
   const [showConfirm, setShowConfirm] = useState(false);
   const config = statusConfig[plan.status];
   const dateRange = plan.startDate && plan.endDate
@@ -56,7 +58,16 @@ export default function TravelPlanCard({ plan }: { plan: TravelPlan }) {
           message={`"${plan.title}" and all its activities will be permanently deleted.`}
           confirmLabel="Delete"
           danger
-          onConfirm={() => { dispatch({ type: "DELETE_PLAN", payload: { id: plan.id } }); setShowConfirm(false); }}
+          onConfirm={() => {
+            dispatch({ type: "DELETE_PLAN", payload: { id: plan.id } });
+            // If this was the last plan for this country, reset bucket list status
+            const otherPlans = plans.filter((p) => p.countryCode === plan.countryCode && p.id !== plan.id);
+            if (otherPlans.length === 0) {
+              const bucketItem = items.find((i) => i.countryCode === plan.countryCode && i.status === "planning");
+              if (bucketItem) bucketDispatch({ type: "UPDATE_ITEM", payload: { id: bucketItem.id, status: "want_to_visit" } });
+            }
+            setShowConfirm(false);
+          }}
           onCancel={() => setShowConfirm(false)}
         />
       )}

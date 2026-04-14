@@ -258,7 +258,12 @@ export function TravelPlanProvider({ children }: { children: ReactNode }) {
       case "DELETE_PLAN": {
         const { id } = action.payload;
         setPlans((prev) => prev.filter((p) => p.id !== id));
-        client.from("travel_plans").delete().eq("id", id);
+        // Also clear local itinerary/accommodation state
+        setItineraryItems((prev) => { const n = { ...prev }; delete n[id]; return n; });
+        setAccommodations((prev) => { const n = { ...prev }; delete n[id]; return n; });
+        client.from("travel_plans").delete().eq("id", id).then(({ error }) => {
+          if (error) console.error("Failed to delete plan:", error);
+        });
         break;
       }
 

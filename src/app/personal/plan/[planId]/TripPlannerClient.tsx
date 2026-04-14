@@ -8,6 +8,7 @@ import { TravelPlan, ItineraryItem, PlanAccommodation } from "@/lib/types";
 import { createClerkSupabaseClient } from "@/lib/supabase";
 import { planFromRow, itineraryItemFromRow, accommodationFromRow } from "@/lib/mappers/travelPlan";
 import { TravelPlanProvider, useTravelPlans } from "@/context/TravelPlanContext";
+import { useBucketList } from "@/context/BucketListContext";
 import SavedPlanEditor from "@/components/personal/SavedPlanEditor";
 import LoadingSpinner from "@/components/shared/LoadingSpinner";
 
@@ -15,7 +16,8 @@ function PlanLoader({ planId }: { planId: string }) {
   const router = useRouter();
   const { session } = useSession();
   const { user } = useUser();
-  const { dispatch, itineraryItems, accommodations } = useTravelPlans();
+  const { dispatch, itineraryItems, accommodations, plans: allPlans } = useTravelPlans();
+  const { items: bucketItems, dispatch: bucketDispatch } = useBucketList();
   const [plan, setPlan] = useState<TravelPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -78,7 +80,15 @@ function PlanLoader({ planId }: { planId: string }) {
 
   return (
     <SavedPlanEditor plan={plan} items={items} accoms={accoms}
-      onDelete={() => { dispatch({ type: "DELETE_PLAN", payload: { id: plan.id } }); router.push("/personal"); }} />
+      onDelete={() => {
+        dispatch({ type: "DELETE_PLAN", payload: { id: plan.id } });
+        const otherPlans = allPlans.filter((p) => p.countryCode === plan.countryCode && p.id !== plan.id);
+        if (otherPlans.length === 0) {
+          const bi = bucketItems.find((i) => i.countryCode === plan.countryCode && i.status === "planning");
+          if (bi) bucketDispatch({ type: "UPDATE_ITEM", payload: { id: bi.id, status: "want_to_visit" } });
+        }
+        router.push("/personal");
+      }} />
   );
 }
 
