@@ -7,7 +7,7 @@ import Link from "next/link";
 import { TravelPlan, ItineraryItem, PlanAccommodation } from "@/lib/types";
 import { createClerkSupabaseClient } from "@/lib/supabase";
 import { planFromRow, itineraryItemFromRow, accommodationFromRow } from "@/lib/mappers/travelPlan";
-import { TravelPlanProvider } from "@/context/TravelPlanContext";
+import { TravelPlanProvider, useTravelPlans } from "@/context/TravelPlanContext";
 import SavedPlanEditor from "@/components/personal/SavedPlanEditor";
 import LoadingSpinner from "@/components/shared/LoadingSpinner";
 
@@ -15,9 +15,8 @@ function PlanLoader({ planId }: { planId: string }) {
   const router = useRouter();
   const { session } = useSession();
   const { user } = useUser();
+  const { dispatch, itineraryItems, accommodations } = useTravelPlans();
   const [plan, setPlan] = useState<TravelPlan | null>(null);
-  const [items, setItems] = useState<ItineraryItem[]>([]);
-  const [accoms, setAccoms] = useState<PlanAccommodation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -26,51 +25,48 @@ function PlanLoader({ planId }: { planId: string }) {
     [session]
   );
 
+  // Fetch plan + seed context
   useEffect(() => {
     if (!session || !user) return;
-
     let cancelled = false;
 
     async function loadPlan() {
       setLoading(true);
       const client = createClerkSupabaseClient(getToken);
 
-      // Fetch plan
       const { data: planData, error: planErr } = await client
-        .from("travel_plans")
-        .select("*")
-        .eq("id", planId)
-        .maybeSingle();
+        .from("travel_plans").select("*").eq("id", planId).maybeSingle();
 
       if (cancelled) return;
-      if (planErr || !planData) {
-        setError("Trip not found");
-        setLoading(false);
-        return;
-      }
-      setPlan(planFromRow(planData as Record<string, unknown>));
+      if (planErr || !planData) { setError("Trip not found"); setLoading(false); return; }
 
-      // Fetch items + accommodations in parallel
+      const loadedPlan = planFromRow(planData as Record<string, unknown>);
+      setPlan(loadedPlan);
+
       const [itemsRes, accomsRes] = await Promise.all([
-        client.from("itinerary_items").select("*").eq("travel_plan_id", planId)
-          .order("day_number").order("sort_order"),
-        client.from("plan_accommodations").select("*").eq("travel_plan_id", planId)
-          .order("sort_order"),
+        client.from("itinerary_items").select("*").eq("travel_plan_id", planId).order("day_number").order("sort_order"),
+        client.from("plan_accommodations").select("*").eq("travel_plan_id", planId).order("sort_order"),
       ]);
 
       if (!cancelled) {
-        setItems((itemsRes.data || []).map((r) => itineraryItemFromRow(r as Record<string, unknown>)));
-        setAccoms((accomsRes.data || []).map((r) => accommodationFromRow(r as Record<string, unknown>)));
+        const loadedItems = (itemsRes.data || []).map((r) => itineraryItemFromRow(r as Record<string, unknown>));
+        const loadedAccoms = (accomsRes.data || []).map((r) => accommodationFromRow(r as Record<string, unknown>));
+        // Seed context so dispatch works
+        dispatch({ type: "SET_ITINERARY", payload: { planId, items: loadedItems } });
+        dispatch({ type: "SET_ACCOMMODATIONS", payload: { planId, items: loadedAccoms } });
         setLoading(false);
       }
     }
 
     loadPlan();
     return () => { cancelled = true; };
-  }, [session, user, planId, getToken]);
+  }, [session, user, planId, getToken, dispatch]);
+
+  // Listen to context for live updates
+  const items = itineraryItems[planId] || [];
+  const accoms = accommodations[planId] || [];
 
   if (loading) return <LoadingSpinner message="Loading your trip..." />;
-
   if (error || !plan) {
     return (
       <div className="text-center py-20">
@@ -81,12 +77,8 @@ function PlanLoader({ planId }: { planId: string }) {
   }
 
   return (
-    <SavedPlanEditor
-      plan={plan}
-      items={items}
-      accoms={accoms}
-      onDelete={() => router.push("/personal")}
-    />
+    <SavedPlanEditor plan={plan} items={items} accoms={accoms}
+      onDelete={() => { dispatch({ type: "DELETE_PLAN", payload: { id: plan.id } }); router.push("/personal"); }} />
   );
 }
 
