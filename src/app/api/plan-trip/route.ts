@@ -122,6 +122,7 @@ Use real, specific place names and realistic prices. Include 2-3 accommodation a
         messages: [{ role: "user", content: prompt }],
         temperature: 0.7,
         max_tokens: 4000,
+        response_format: { type: "json_object" },
       }),
     });
 
@@ -135,10 +136,20 @@ Use real, specific place names and realistic prices. Include 2-3 accommodation a
 
     let itinerary;
     try {
-      const jsonStr = content.replace(/^```json?\n?/, "").replace(/\n?```$/, "");
-      itinerary = JSON.parse(jsonStr);
+      // Try direct parse first (response_format: json_object should give clean JSON)
+      itinerary = JSON.parse(content);
     } catch {
-      return NextResponse.json({ error: "Failed to parse itinerary", raw: content }, { status: 500 });
+      try {
+        // Fallback: strip markdown fences and any text before/after JSON
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          itinerary = JSON.parse(jsonMatch[0]);
+        } else {
+          return NextResponse.json({ error: "Failed to parse itinerary" }, { status: 500 });
+        }
+      } catch {
+        return NextResponse.json({ error: "Failed to parse itinerary" }, { status: 500 });
+      }
     }
 
     return NextResponse.json(itinerary);
