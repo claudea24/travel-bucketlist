@@ -45,13 +45,12 @@ A travel planning app with two main experiences: **Discover** destinations with 
 | `profiles` | User profile cache |
 | `destinations` | Pre-seeded destination cards with Pexels photos |
 | `destination_activities` | Things to do at destinations |
-| `user_activities` | Activities saved to personal bucket list items |
 | `travel_plans` | Trip plans (dates, budget, linked to bucket list items) |
 | `itinerary_items` | Day-by-day items within a travel plan |
 
 ### Column Name Mapping
 Database uses snake_case, TypeScript uses camelCase. Mapper files in `src/lib/mappers/`:
-- `profile.ts`, `destination.ts`, `travelPlan.ts`, `userActivity.ts`
+- `profile.ts`, `destination.ts`, `travelPlan.ts`
 
 Legacy mappers in `src/lib/supabase.ts`: `itemFromRow()` / `itemToRow()`
 
@@ -201,7 +200,6 @@ src/
 │       ├── profile.ts
 │       ├── destination.ts
 │       ├── travelPlan.ts
-│       └── userActivity.ts
 └── middleware.ts                     # Clerk route protection
 ```
 

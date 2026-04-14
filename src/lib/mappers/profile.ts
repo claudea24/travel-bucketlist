@@ -7,8 +7,6 @@ export function profileFromRow(row: Record<string, unknown>): UserProfile {
     displayName: (row.display_name as string) || "",
     avatarUrl: (row.avatar_url as string) || null,
     bio: (row.bio as string) || "",
-    countriesVisitedCount: (row.countries_visited_count as number) || 0,
-    countriesWantCount: (row.countries_want_count as number) || 0,
     isPublic: row.is_public as boolean,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,

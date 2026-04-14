@@ -11,7 +11,6 @@ export interface BucketListItem {
   status: "want_to_visit" | "planning" | "visited";
   notes: string;
   createdAt?: string;
-  activities?: UserActivity[];
 }
 
 // Country from RestCountries API
@@ -43,8 +42,6 @@ export interface UserProfile {
   displayName: string;
   avatarUrl: string | null;
   bio: string;
-  countriesVisitedCount: number;
-  countriesWantCount: number;
   isPublic: boolean;
   createdAt: string;
   updatedAt: string;
@@ -89,18 +86,6 @@ export interface DestinationActivity {
   externalId: string | null;
   latitude: number | null;
   longitude: number | null;
-}
-
-// Activity a user saves to their personal bucket list item
-export interface UserActivity {
-  id: string;
-  userId: string;
-  bucketListItemId: string;
-  destinationActivityId: string | null;
-  name: string;
-  notes: string | null;
-  isCompleted: boolean;
-  createdAt: string;
 }
 
 // Travel plan linked to a bucket list item
@@ -192,10 +177,7 @@ export type BucketListAction =
   | { type: "SET_ITEMS"; payload: BucketListItem[] }
   | { type: "ADD_ITEM"; payload: BucketListItem }
   | { type: "UPDATE_ITEM"; payload: { id: string } & Partial<BucketListItem> }
-  | { type: "REMOVE_ITEM"; payload: { id: string } }
-  | { type: "SET_ACTIVITIES"; payload: { bucketListItemId: string; activities: UserActivity[] } }
-  | { type: "ADD_ACTIVITY"; payload: UserActivity }
-  | { type: "REMOVE_ACTIVITY"; payload: { id: string; bucketListItemId: string } };
+  | { type: "REMOVE_ITEM"; payload: { id: string } };
 
 export type TravelPlanAction =
   | { type: "SET_PLANS"; payload: TravelPlan[] }
