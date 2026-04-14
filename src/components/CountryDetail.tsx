@@ -26,16 +26,16 @@ export default function CountryDetail({ code }: CountryDetailProps) {
   const [manualStartDate, setManualStartDate] = useState("");
   const [manualEndDate, setManualEndDate] = useState("");
   const [creatingPlan, setCreatingPlan] = useState(false);
-  const [existingPlans, setExistingPlans] = useState<{ id: string; title: string }[]>([]);
+  const [existingPlans, setExistingPlans] = useState<{ id: string; title: string; start_date: string | null; end_date: string | null }[]>([]);
   const { items, dispatch } = useBucketList();
 
   // Check if plans exist for this country
   useEffect(() => {
     if (!session) return;
     const client = createClerkSupabaseClient(() => session.getToken({ template: "supabase" }));
-    client.from("travel_plans").select("id, title").eq("country_code", code)
+    client.from("travel_plans").select("id, title, start_date, end_date").eq("country_code", code)
       .then(({ data }) => {
-        if (data && data.length > 0) setExistingPlans(data as { id: string; title: string }[]);
+        if (data && data.length > 0) setExistingPlans(data as { id: string; title: string; start_date: string | null; end_date: string | null }[]);
       });
   }, [session, code]);
 
@@ -203,6 +203,11 @@ export default function CountryDetail({ code }: CountryDetailProps) {
               <Link href={`/personal/plan/${existingPlans[0].id}`}
                 className="flex items-center gap-2 px-5 py-2.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-sm font-medium hover:bg-amber-100 transition-all">
                 📋 View My Trip
+                {existingPlans[0].start_date && existingPlans[0].end_date && (
+                  <span className="text-xs text-amber-600 font-normal">
+                    ({new Date(existingPlans[0].start_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })} – {new Date(existingPlans[0].end_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })})
+                  </span>
+                )}
               </Link>
             )}
 
@@ -211,11 +216,16 @@ export default function CountryDetail({ code }: CountryDetailProps) {
                 <button className="flex items-center gap-2 px-5 py-2.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-sm font-medium hover:bg-amber-100 transition-all">
                   📋 My Trips ({existingPlans.length})
                 </button>
-                <div className="absolute top-full left-0 mt-1 w-64 bg-white rounded-xl border border-gray-200 shadow-lg z-20 hidden group-focus-within:block group-hover:block">
+                <div className="absolute top-full left-0 mt-1 w-72 bg-white rounded-xl border border-gray-200 shadow-lg z-20 hidden group-focus-within:block group-hover:block">
                   {existingPlans.map((p) => (
                     <Link key={p.id} href={`/personal/plan/${p.id}`}
-                      className="block px-4 py-3 text-sm text-gray-700 hover:bg-teal-50 first:rounded-t-xl last:rounded-b-xl transition-colors">
-                      {p.title}
+                      className="block px-4 py-3 hover:bg-teal-50 first:rounded-t-xl last:rounded-b-xl transition-colors">
+                      <p className="text-sm font-medium text-gray-700">{p.title}</p>
+                      {p.start_date && p.end_date && (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {new Date(p.start_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })} – {new Date(p.end_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </p>
+                      )}
                     </Link>
                   ))}
                 </div>
