@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import { aiFetch } from "@/lib/userApiKey";
 
 interface ActivityModalProps {
   name: string;
@@ -56,7 +57,7 @@ export default function ActivityModal({
     const cached = sessionStorage.getItem(cacheKey);
     if (cached) { setDetails(JSON.parse(cached)); setLoadingDetails(false); return; }
 
-    fetch("/api/activity-detail", {
+    aiFetch("/api/activity-detail", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, countryName }),

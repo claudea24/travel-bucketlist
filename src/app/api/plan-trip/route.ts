@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { resolveOpenAIKey, NO_KEY_MESSAGE, BAD_KEY_MESSAGE } from "@/lib/openaiKey";
 
 export async function POST(request: NextRequest) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = resolveOpenAIKey(request);
   if (!apiKey) {
-    return NextResponse.json({ error: "OpenAI API key not configured" }, { status: 500 });
+    return NextResponse.json({ error: NO_KEY_MESSAGE }, { status: 401 });
   }
 
   const body = await request.json();
@@ -128,6 +129,9 @@ Use real, specific place names and realistic prices. Include 2-3 accommodation a
 
     const data = await res.json();
 
+    if (res.status === 401) {
+      return NextResponse.json({ error: BAD_KEY_MESSAGE }, { status: 401 });
+    }
     if (!data.choices?.[0]?.message?.content) {
       return NextResponse.json({ error: "No response from AI" }, { status: 502 });
     }

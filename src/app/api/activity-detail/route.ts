@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { resolveOpenAIKey, NO_KEY_MESSAGE, BAD_KEY_MESSAGE } from "@/lib/openaiKey";
 
 export async function POST(request: NextRequest) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = resolveOpenAIKey(request);
   if (!apiKey) {
-    return NextResponse.json({ error: "OpenAI not configured" }, { status: 500 });
+    return NextResponse.json({ error: NO_KEY_MESSAGE }, { status: 401 });
   }
 
   const { name, countryName } = await request.json();
@@ -40,6 +41,7 @@ Be specific and practical. Write as if sharing insider knowledge with a friend.`
     });
 
     const data = await res.json();
+    if (res.status === 401) return NextResponse.json({ error: BAD_KEY_MESSAGE }, { status: 401 });
     const content = data.choices?.[0]?.message?.content?.trim();
     if (!content) return NextResponse.json({ error: "No response" }, { status: 502 });
 

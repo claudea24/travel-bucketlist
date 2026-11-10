@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { resolveOpenAIKey } from "@/lib/openaiKey";
 
 const WIKI_HEADERS = { "User-Agent": "TravelBucketList/1.0 (educational project)" };
 
@@ -33,8 +34,7 @@ function makeYoutubeSearchUrl(name: string, country: string): string {
 }
 
 // Use OpenAI to generate activities, or fall back to Wikivoyage
-async function generateActivitiesWithAI(countryName: string): Promise<Activity[]> {
-  const apiKey = process.env.OPENAI_API_KEY;
+async function generateActivitiesWithAI(countryName: string, apiKey: string | undefined): Promise<Activity[]> {
   if (!apiKey) return [];
 
   const prompt = `You are a travel expert. List 12-15 specific things to do in ${countryName} that a tourist would love.
@@ -161,7 +161,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // Try AI first, fall back to Wikivoyage — return immediately without images
-    let activities = await generateActivitiesWithAI(countryName);
+    let activities = await generateActivitiesWithAI(countryName, resolveOpenAIKey(request));
     if (activities.length === 0) {
       activities = await fetchWikivoyageActivities(countryName);
     }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
+import ApiKeyButton from "./ApiKeyButton";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -40,7 +41,10 @@ export default function Navbar() {
             ))}
           </div>
         </div>
-        <UserButton />
+        <div className="flex items-center gap-2">
+          <ApiKeyButton />
+          <UserButton />
+        </div>
       </div>
       {/* Mobile nav */}
       <div className="flex sm:hidden gap-1 mt-2 -mx-1">

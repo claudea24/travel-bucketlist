@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import LoadingSpinner from "./LoadingSpinner";
 import ActivityModal from "./ActivityModal";
+import { aiFetch } from "@/lib/userApiKey";
 
 interface Activity {
   name: string;
@@ -120,7 +121,7 @@ export default function ActivitySection({ countryName, countryCode, onSelectActi
       } catch { /* ignore */ }
 
       try {
-        const res = await fetch(
+        const res = await aiFetch(
           `/api/activities?country=${encodeURIComponent(countryName)}&code=${encodeURIComponent(countryCode)}`
         );
         if (!res.ok) throw new Error("Failed to fetch");

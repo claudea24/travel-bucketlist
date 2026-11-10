@@ -18,6 +18,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { TripPlan } from "@/app/personal/plan/new/NewPlanClient";
+import { aiFetch } from "@/lib/userApiKey";
 
 const categoryEmoji: Record<string, string> = {
   sightseeing: "📸", food: "🍽️", adventure: "🎯", culture: "🏛️",
@@ -157,7 +158,7 @@ export default function TripCalendar({ plan, onUpdatePlan, onRegenerate }: TripC
     if (!refineInput.trim()) return;
     setRefineLoading(true);
     try {
-      const res = await fetch("/api/plan-trip", {
+      const res = await aiFetch("/api/plan-trip", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -168,8 +169,8 @@ export default function TripCalendar({ plan, onUpdatePlan, onRegenerate }: TripC
           refineRequest: refineInput.trim(),
         }),
       });
-      if (!res.ok) throw new Error("Failed");
       const data = await res.json();
+      if (!res.ok) { alert(data.error || "AI refine failed"); setRefineLoading(false); return; }
       // Add IDs
       data.days = (data.days || []).map((day: { activities: { id?: string }[] }) => ({
         ...day,

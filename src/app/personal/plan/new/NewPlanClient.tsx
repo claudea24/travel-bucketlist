@@ -6,6 +6,7 @@ import Link from "next/link";
 import TripSetup from "@/components/personal/TripSetup";
 import TripCalendar from "@/components/personal/TripCalendar";
 import LoadingSpinner from "@/components/shared/LoadingSpinner";
+import { aiFetch } from "@/lib/userApiKey";
 
 interface ItineraryActivity {
   id: string;
@@ -86,7 +87,7 @@ export default function NewPlanClient() {
     try {
       if (!countryName) throw new Error("Country name is missing. Please go back and click 'Plan My Trip' from a country page.");
 
-      const res = await fetch("/api/plan-trip", {
+      const res = await aiFetch("/api/plan-trip", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

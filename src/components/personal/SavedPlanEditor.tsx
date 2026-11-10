@@ -5,6 +5,7 @@ import { TravelPlan, ItineraryItem, PlanAccommodation, PlanTransport, TripNote }
 import { useTravelPlans } from "@/context/TravelPlanContext";
 import DaySchedule from "./DaySchedule";
 import ConfirmModal from "@/components/shared/ConfirmModal";
+import { aiFetch } from "@/lib/userApiKey";
 
 interface Props {
   plan: TravelPlan;
@@ -64,9 +65,9 @@ export default function SavedPlanEditor({ plan, items, accoms, transports, notes
     setRefineLoading(true);
     try {
       const currentPlan = { title: plan.title, days: dayNumbers.map((d) => ({ day: d, title: `Day ${d}`, activities: (dayGroups[d] || []).map((i) => ({ time: i.startTime, title: i.title, description: i.description, category: i.category, estimatedCost: i.estimatedCost ? `$${i.estimatedCost}` : "" })) })) };
-      const res = await fetch("/api/plan-trip", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ countryName: plan.countryName, currentItinerary: JSON.stringify(currentPlan), refineRequest: refineInput.trim() }) });
-      if (!res.ok) throw new Error("Failed");
+      const res = await aiFetch("/api/plan-trip", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ countryName: plan.countryName, currentItinerary: JSON.stringify(currentPlan), refineRequest: refineInput.trim() }) });
       const data = await res.json();
+      if (!res.ok) { alert(data.error || "AI refine failed"); setRefineLoading(false); return; }
       const validCats = new Set(["transport", "accommodation", "activity", "food", "other"]);
       const parseTime = (t: string | null): string | null => { if (!t) return null; const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i); if (!m) return null; let h = parseInt(m[1]); if (m[3]?.toUpperCase() === "PM" && h < 12) h += 12; if (m[3]?.toUpperCase() === "AM" && h === 12) h = 0; return `${h.toString().padStart(2, "0")}:${m[2]}:00`; };
       for (const item of items) dispatch({ type: "DELETE_ITINERARY_ITEM", payload: { id: item.id, planId: plan.id } });

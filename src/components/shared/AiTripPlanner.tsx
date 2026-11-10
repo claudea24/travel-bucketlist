@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import LoadingSpinner from "./LoadingSpinner";
+import { aiFetch } from "@/lib/userApiKey";
 
 interface ItineraryActivity {
   time: string;
@@ -65,14 +66,13 @@ export default function AiTripPlanner({ countryName, countryCode, selectedActivi
     setError("");
     setSaved(false);
     try {
-      const res = await fetch("/api/plan-trip", {
+      const res = await aiFetch("/api/plan-trip", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ countryName, countryCode, activities: selectedActivities, days, interests }),
       });
-      if (!res.ok) throw new Error("Failed to generate");
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      if (!res.ok || data.error) throw new Error(data.error || "Failed to generate");
       setItinerary(data);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
@@ -85,7 +85,7 @@ export default function AiTripPlanner({ countryName, countryCode, selectedActivi
     setRefineLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/plan-trip", {
+      const res = await aiFetch("/api/plan-trip", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -98,9 +98,8 @@ export default function AiTripPlanner({ countryName, countryCode, selectedActivi
           refineRequest: refineInput.trim(),
         }),
       });
-      if (!res.ok) throw new Error("Failed to refine");
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      if (!res.ok || data.error) throw new Error(data.error || "Failed to refine");
       setItinerary(data);
       setRefineInput("");
       setSaved(false);
